@@ -14,9 +14,6 @@ public class PingPongOrderCheck extends Check {
 
     private final List<Integer> transactionIDs = new ArrayList<>();
 
-    public PingPongOrderCheck() {
-        super("PingPongOrder");
-    }
 
     @Override
     public void handleReceivePlayPacket(PacketPlayReceiveEvent event) {

@@ -32,6 +32,12 @@
                 <version>${lamp.version}</version>
                 <scope>compile</scope>
             </dependency>
+            <dependency>
+                <groupId>io.github.revxrsal</groupId>
+                <artifactId>lamp.velocity</artifactId>
+                <version>${lamp.version}</version>
+                <scope>compile</scope>
+            </dependency>
 
             <dependency>
                 <groupId>com.github.haifengl</groupId>
@@ -41,10 +47,6 @@
                     <exclusion>
                         <groupId>org.duckdb</groupId>
                         <artifactId>duckdb_jdbc</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>org.bytedeco</groupId>
-                        <artifactId>openblas</artifactId>
                     </exclusion>
                 </exclusions>
             </dependency>
@@ -70,6 +72,11 @@
                 <artifactId>fastjson2</artifactId>
                 <version>2.0.57</version>
             </dependency>
+            <dependency>
+                <groupId>com.github.luben</groupId>
+                <artifactId>zstd-jni</artifactId>
+                <version>1.5.6-7</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -78,6 +85,7 @@
         <module>spigot</module>
         <module>sponge</module>
         <module>paper</module>
+        <module>models</module>
         <module>velocity</module>
     </modules>
 

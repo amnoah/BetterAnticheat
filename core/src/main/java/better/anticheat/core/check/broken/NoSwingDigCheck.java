@@ -1,16 +1,13 @@
 package better.anticheat.core.check.broken;
 
 import better.anticheat.core.check.Check;
+import better.anticheat.core.check.CheckInfo;
 import com.github.retrooper.packetevents.event.simple.PacketPlayReceiveEvent;
 import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientPlayerDigging;
 
+@CheckInfo(name = "NoSwingDig", category = "dig", config = "checks")
 public class NoSwingDigCheck extends Check {
-
     private boolean started = false, swungThisTick = false, constantSwinging = false;
-
-    public NoSwingDigCheck() {
-        super("NoSwingDig");
-    }
 
     @Override
     public void handleReceivePlayPacket(PacketPlayReceiveEvent event) {

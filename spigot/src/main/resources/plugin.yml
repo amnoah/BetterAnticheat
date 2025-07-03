@@ -21,3 +21,4 @@ libraries:
   - com.github.haifengl:smile-core:4.4.0
   - com.github.haifengl:smile-plot:4.4.0
   - com.alibaba.fastjson2:fastjson2:2.0.57
+  - com.github.luben:zstd-jni:1.5.6-7

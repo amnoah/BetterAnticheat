@@ -116,6 +116,11 @@
             <artifactId>fastjson2</artifactId>
             <scope>compile</scope>
         </dependency>
+        <dependency>
+            <groupId>com.github.luben</groupId>
+            <artifactId>zstd-jni</artifactId>
+            <scope>compile</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -199,6 +204,10 @@
                                 <relocation>
                                     <pattern>org.slf4j</pattern>
                                     <shadedPattern>better.anticheat.slf4j</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>com.github.luben.zstd</pattern>
+                                    <shadedPattern>better.anticheat.zstd</shadedPattern>
                                 </relocation>
                             </relocations>
                         </configuration>

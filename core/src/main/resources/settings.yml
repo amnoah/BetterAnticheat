@@ -39,3 +39,62 @@ test-mode: false
 
 # Should the plugin register commands? This makes most other steps to hide the anticheat pointless.
 enable-commands: false
+
+# ML Features. NOTE: These features are currently highly experimental, and are released for development purposes only.
+# DO NOT USE THEM IN PRODUCTION ENVIRONMENTS WITHOUT THOROUGH TESTING
+# MAKING THIS FEATURE STABLE will likely require significant and diverse amounts of extra training data, which can be collected with the record commands.
+ml:
+  # Whether to enable ML combat features.
+  enabled: false
+  # The list of models to use. Note that this does not update when the plugin is updated, so check the wiki for the latest recommended configuration, after upgrades.
+  models:
+    raw-data-included-v0:
+      displayName: "Raw Data"
+      # Options: "decision_tree_gini", "decision_tree_entropy", "random_forest_gini", "random_forest_entropy", "logistic_regression", "fld", "knn", "lda".
+      type: "decision_tree_gini"
+      # The data slice to use (0 for yaw changes, 1 for offsets, 2 for combined).
+      slice: 1
+      # Included: legit-small-2025-06-24-1 (notice: this comment does not update when the plugin is updated, so check the wiki for the latest version).
+      legitDatasetNames: ["legit-small-2025-06-24-1"]
+      # Included: cheat-small-2025-06-24-1 (notice: this comment does not update when the plugin is updated, so check the wiki for the latest version).
+      cheatDatasetNames: ["cheat-small-2025-06-24-1"]
+      # Should we extract statistics from the data before using the model?
+      statistics: false
+      # Should we shrink both datasets to the same size?
+      shrink: true
+      # How many samples to use for runtime classification.
+      samples: 15
+      # Required average of samples to flag the player (9.5 == Definitely cheating, 3 == Probably not cheating).
+      threshold: 7
+      # Enable this model check?
+      enabled: true
+      # The minimum vl required to run an alert, after the samples/threshold requirement have been met.
+      alert-vl: 1
+      # The punishment command to run when a player is flagged by this model.
+      punishments:
+        '1:say %username% might be using a combat cheat!'
+    statistics-included-v0:
+      displayName: "Statistics"
+      # Options: "decision_tree_gini", "decision_tree_entropy", "random_forest_gini", "random_forest_entropy", "logistic_regression", "fld", "knn", "lda".
+      type: "decision_tree_entropy"
+      # The data slice to use (0 for yaw changes, 1 for offsets, 2 for combined).
+      slice: 1
+      # Included: legit-small-2025-06-24-1 (notice: this comment does not update when the plugin is updated, so check the wiki for the latest version).
+      legitDatasetNames: ["legit-small-2025-06-24-1"]
+      # Included: cheat-small-2025-06-24-1 (notice: this comment does not update when the plugin is updated, so check the wiki for the latest version).
+      cheatDatasetNames: ["cheat-small-2025-06-24-1"]
+      # Should we extract statistics from the data before using the model?
+      statistics: true
+      # Should we shrink both datasets to the same size?
+      shrink: true
+      # How many samples to use for runtime classification.
+      samples: 10
+      # Required average of samples to flag the player (9.5 == Definitely cheating, 3 == Probably not cheating).
+      threshold: 7
+      # Enable this model check?
+      enabled: true
+      # The minimum vl required to run an alert, after the samples/threshold requirement have been met.
+      alert-vl: 1
+      # The punishment command to run when a player is flagged by this model.
+      punishments:
+        '1:say %username% might be using a combat cheat!'

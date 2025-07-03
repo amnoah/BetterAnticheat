@@ -18,6 +18,7 @@ import net.kyori.adventure.text.Component;
 import org.jetbrains.annotations.Nullable;
 
 import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -30,7 +31,7 @@ public class ConfirmationTracker extends Tracker {
     /**
      * A list of awaiting confirmations.
      */
-    private final Set<ConfirmationState> confirmations = ConcurrentHashMap.newKeySet(10);
+    private final Set<ConfirmationState> confirmations = Collections.synchronizedSet(new HashSet<>());
     /**
      * 30 seconds of recent confirmations, assuming one confirmation per tick, but it is usually less than this, meaning it can provide an even longer window
      */
@@ -116,6 +117,7 @@ public class ConfirmationTracker extends Tracker {
                             log.info("[BetterAntiCheat] Timed out player: {}", getPlayer().getUser().getName());
                             getPlayer().getUser().closeConnection();
                         }
+                        log.debug("[BetterAntiCheat] Timed out confirmation: {}", state);
                         return true;
                     }
                     return false;
@@ -150,30 +152,30 @@ public class ConfirmationTracker extends Tracker {
         final var now = System.currentTimeMillis();
         // Send last tick, and recent arrival.
         final var hasRecentArrival = !recentConfirmations.isEmpty() && now - recentConfirmations.getLast().getTimestampConfirmed() <= 50 && now - recentConfirmations.getLast().getTimestamp() <= 50;
-        // Sent last tick, and NOT this tick (12ms ago for examplar), therefore is a perfect pre confirmation option
-        var sentOption = EasyLoops.findFirst(confirmations, c -> c.getType() == ConfirmationType.KEEPALIVE & c.getTimestampConfirmed() == -1L & now - c.getTimestamp() <= 120 & now - c.getTimestamp() > 12);
 
         if (hasRecentArrival) {
             final var post = sendCookieOrLatest(now);
             final var acquiredConfirmation = new CombinedConfirmation(CompletableFuture.completedFuture(this.recentConfirmations.getLast()), new CompletableFuture<>(), new IntIncrementer(1));
             post.getListeners().add(() -> {
-                acquiredConfirmation.getOnBegin().complete(this.recentConfirmations.getLast());
+                acquiredConfirmation.getOnBegin().complete(this.recentConfirmations.isEmpty() ? null : this.recentConfirmations.getLast());
                 acquiredConfirmation.getState().increment();
             });
 
             return acquiredConfirmation;
         }
 
+        // Sent last tick, and NOT this tick (12ms ago for examplar), therefore is a perfect pre confirmation option
+        var sentOption = EasyLoops.findFirst(confirmations, c -> c.getType() == ConfirmationType.KEEPALIVE & c.getTimestampConfirmed() == -1L & now - c.getTimestamp() <= 120 & now - c.getTimestamp() > 12);
         // Check if there is a sendoption except there is no keepalive sendoption.
         if (sentOption != null) {
-            sentOption = EasyLoops.findFirst(confirmations, c -> c.getType() == ConfirmationType.KEEPALIVE & c.getTimestampConfirmed() == -1L & now - c.getTimestamp() <= 120 & now - c.getTimestamp() > 12);
+            sentOption = EasyLoops.findFirst(confirmations, c -> c.getType() != ConfirmationType.KEEPALIVE & c.getTimestampConfirmed() == -1L & now - c.getTimestamp() <= 120 & now - c.getTimestamp() > 12);
         }
 
         if (sentOption != null) {
             final var post = sendCookieOrLatest(now);
             final var acquiredConfirmation = new CombinedConfirmation(new CompletableFuture<>(), new CompletableFuture<>(), new IntIncrementer(0));
             sentOption.getListeners().add(() -> {
-                acquiredConfirmation.getOnBegin().complete(this.recentConfirmations.getLast());
+                acquiredConfirmation.getOnBegin().complete(this.recentConfirmations.isEmpty() ? null : this.recentConfirmations.getLast());
                 acquiredConfirmation.getState().increment();
             });
 
@@ -240,8 +242,8 @@ public class ConfirmationTracker extends Tracker {
     public void sendTickKeepaliveNoFlush() {
         // First, check if we can skip, because we already sent a keepalive and a cookie last tick
         final var now = System.currentTimeMillis();
-        if (EasyLoops.anyMatch(this.confirmations, (c) -> c.getType() == ConfirmationType.KEEPALIVE & now - c.getTimestamp() < 100)
-                && EasyLoops.anyMatch(this.confirmations, (c) -> c.getType() != ConfirmationType.KEEPALIVE & now - c.getTimestamp() < 100)) {
+        if (EasyLoops.anyMatch(this.confirmations, (c) -> c.getType() == ConfirmationType.KEEPALIVE & now - c.getTimestamp() < 55)
+                && EasyLoops.anyMatch(this.confirmations, (c) -> c.getType() != ConfirmationType.KEEPALIVE & now - c.getTimestamp() < 55)) {
             log.trace("[BetterAntiCheat] Skipping tick keepalive");
             return;
         }

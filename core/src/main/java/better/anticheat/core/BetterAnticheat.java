@@ -5,27 +5,41 @@ import better.anticheat.core.command.BetterAnticheatCommand;
 import better.anticheat.core.configuration.ConfigSection;
 import better.anticheat.core.configuration.ConfigurationFile;
 import better.anticheat.core.player.PlayerManager;
+import better.anticheat.core.util.ml.MLTrainer;
+import better.anticheat.core.util.ml.ModelConfig;
 import com.github.retrooper.packetevents.PacketEvents;
 import com.github.retrooper.packetevents.manager.server.ServerVersion;
+import lombok.Getter;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Path;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class BetterAnticheat {
 
+    @Getter
     private static BetterAnticheat instance;
 
+    @Getter
     private final DataBridge dataBridge;
     private final Path directory;
 
     private boolean enabled;
 
     // Settings
+    @Getter
     private int alertCooldown;
+    @Getter
     private List<String> alertHover;
+    @Getter
     private String alertMessage, alertPermission, clickCommand;
+    @Getter
     private boolean punishmentModulo, testMode, useCommand;
+    @Getter
+    private Map<String, ModelConfig> modelConfigs = new HashMap<>();
 
     public BetterAnticheat(DataBridge dataBridge, Path directory) {
         this.dataBridge = dataBridge;
@@ -73,10 +87,48 @@ public class BetterAnticheat {
         testMode = settings.getObject(Boolean.class, "test-mode", false);
         useCommand = settings.getObject(Boolean.class, "enable-commands", true); // Default to true for people who have not updated their config.
 
+        loadML(settings);
+
         CheckManager.load(this);
         PlayerManager.load(this);
 
         dataBridge.logInfo("Load finished!");
+    }
+
+    public void loadML(final ConfigSection baseConfig) {
+        final var mlNode = baseConfig.getConfigSection("ml");
+        final var mlEnabled = mlNode.getObject(Boolean.class, "enabled", false);
+
+        final var models = mlNode.getConfigSection("models");
+
+        if (mlEnabled) {
+            for (final var child : models.getChildren()) {
+                modelConfigs.put(child.getKey(), new ModelConfig(
+                        child.getObject(String.class, "displayName", "example-model"),
+                        child.getObject(String.class, "type", "model-type"),
+                        child.getObject(Integer.class, "slice", 1),
+                        child.getList(String.class, "legitDatasetNames"),
+                        child.getList(String.class, "cheatDatasetNames"),
+                        child.getObject(Boolean.class, "statistics", false),
+                        child.getObject(Boolean.class, "shrink", true),
+                        child.getObject(Integer.class, "samples", 10),
+                        child.getObject(Integer.class, "threshold", 7),
+                        child
+                ));
+            }
+        }
+
+        modelConfigs.forEach((name, config) -> {
+            try {
+                dataBridge.logInfo("Loading model for " + name + "...");
+                final var model = MLTrainer.create(config.getLegitDatasetNames(), config.getCheatDatasetNames(), config.getType(), config.getSlice(), config.isStatistics(), config.isStatistics(), config.isShrink(), this.directory);
+                config.setClassifierFunction(model);
+                dataBridge.logInfo("Model for " + name + " loaded!");
+            } catch (IOException e) {
+                dataBridge.logInfo("Error while creating model trainer for " + name + ": " + e.getMessage());
+                e.printStackTrace();
+            }
+        });
     }
 
     public ConfigurationFile getFile(String name) {
@@ -85,45 +137,5 @@ public class BetterAnticheat {
 
     public ConfigurationFile getFile(String name, InputStream input) {
         return new ConfigurationFile(name, directory, input);
-    }
-
-    /*
-     * Getters.
-     */
-
-    public static BetterAnticheat getInstance() {
-        return instance;
-    }
-
-    public int getAlertCooldown() {
-        return alertCooldown;
-    }
-
-    public List<String> getAlertHover() {
-        return alertHover;
-    }
-
-    public String getAlertMessage() {
-        return alertMessage;
-    }
-
-    public String getAlertPermission() {
-        return alertPermission;
-    }
-
-    public String getClickCommand() {
-        return clickCommand;
-    }
-
-    public DataBridge getDataBridge() {
-        return dataBridge;
-    }
-
-    public boolean isPunishmentModulo() {
-        return punishmentModulo;
-    }
-
-    public boolean isTestMode() {
-        return testMode;
     }
 }

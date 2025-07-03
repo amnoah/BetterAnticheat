@@ -9,6 +9,7 @@ import better.anticheat.core.util.ml.MLTrainer;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
+import com.github.luben.zstd.Zstd;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.kyori.adventure.text.Component;
@@ -17,6 +18,7 @@ import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.jetbrains.annotations.Nullable;
 import revxrsal.commands.annotation.Command;
+import revxrsal.commands.annotation.Optional;
 import revxrsal.commands.annotation.Range;
 import revxrsal.commands.annotation.Subcommand;
 import revxrsal.commands.command.CommandActor;
@@ -39,6 +41,7 @@ import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.ForkJoinPool;
 
 @RequiredArgsConstructor
 @Command({"betteranticheat", "bac", "betterac", "antispam"})
@@ -133,6 +136,79 @@ public class BetterAnticheatCommand {
         sendReply(actor, Component.text("Recording saved! Remember to reset!"));
     }
 
+    @Subcommand("recording-merge")
+    public void recordingMerge(final CommandActor actor, final String source1, final String source2, final String dest) throws IOException {
+        if (!hasPermission(actor)) return;
+
+        final var json1 = loadRecordingJson(source1);
+        if (json1 == null) {
+            sendReply(actor, Component.text("Could not load source recording: " + source1));
+            return;
+        }
+
+        final var json2 = loadRecordingJson(source2);
+        if (json2 == null) {
+            sendReply(actor, Component.text("Could not load source recording: " + source2));
+            return;
+        }
+
+        final var yaws1 = json1.getJSONArray("yaws");
+        final var offsets1 = json1.getJSONArray("offsets");
+        final var enhancedOffsets1 = json1.getJSONArray("enhancedOffsets");
+
+        final var yaws2 = json2.getJSONArray("yaws");
+        final var offsets2 = json2.getJSONArray("offsets");
+        final var enhancedOffsets2 = json2.getJSONArray("enhancedOffsets");
+
+        yaws1.addAll(yaws2);
+        offsets1.addAll(offsets2);
+        enhancedOffsets1.addAll(enhancedOffsets2);
+
+        final JSONObject mergedJson = new JSONObject();
+        mergedJson.put("yaws", yaws1);
+        mergedJson.put("offsets", offsets1);
+        mergedJson.put("enhancedOffsets", enhancedOffsets1);
+
+        final var recordingDirectory = directory.resolve("recording");
+        if (!recordingDirectory.toFile().exists()) {
+            recordingDirectory.toFile().mkdirs();
+        }
+
+        Files.writeString(recordingDirectory.resolve(dest + ".json"), JSON.toJSONString(mergedJson), StandardCharsets.UTF_16LE);
+
+        sendReply(actor, Component.text("Merged " + source1 + " and " + source2 + " into " + dest));
+    }
+
+    @Subcommand("recording-export")
+    public void recordingExport(final CommandActor actor, final String source, @Optional String dest) throws IOException {
+        if (!hasPermission(actor)) return;
+
+        if (dest == null || dest.isEmpty()) {
+            dest = source;
+        }
+
+        final var sourceJson = loadRecordingJson(source);
+        if (sourceJson == null) {
+            sendReply(actor, Component.text("Could not load source recording: " + source));
+            return;
+        }
+
+        final var exportDirectory = directory.resolve("export");
+        if (!exportDirectory.toFile().exists()) {
+            exportDirectory.toFile().mkdirs();
+        }
+
+        // Convert JSON to string and compress with zstd
+        final String jsonString = JSON.toJSONString(sourceJson);
+        final byte[] jsonBytes = jsonString.getBytes(StandardCharsets.UTF_16LE);
+        final byte[] compressedBytes = Zstd.compress(jsonBytes, 22);
+
+        // Write compressed data to export directory
+        Files.write(exportDirectory.resolve(dest + ".json.zst"), compressedBytes);
+
+        sendReply(actor, Component.text("Exported " + source + " to compressed file " + dest + ".json.zst"));
+    }
+
     @Subcommand("recording-validate")
     public void recordingValidate(final CommandActor actor, final String legit, @Range(min = 0, max = 2) final short column, final List<String> cheating) throws IOException {
         final var legitData = loadData(legit);
@@ -181,15 +257,17 @@ public class BetterAnticheatCommand {
 
         final double[][][] finalCheatingData = new double[][][]{combinedYaws, combinedOffsets, combinedEnhancedOffsets};
 
-        actor.reply("--- RAW DATA: ");
-        runTrainerTests(legitData, finalCheatingData, actor, column, false, false);
+        ForkJoinPool.commonPool().execute(() -> {
+            actor.reply("--- RAW DATA: ");
+            runTrainerTests(legitData, finalCheatingData, actor, column, false, false);
 
-        actor.reply("--- PROCESSED DATA: ");
-        runTrainerTests(legitData, finalCheatingData, actor, column, true, true);
+            actor.reply("--- PROCESSED DATA: ");
+            runTrainerTests(legitData, finalCheatingData, actor, column, true, true);
+        });
     }
 
-    private void runTrainerTests(double[][][] legitData, double[][][] finalCheatingData, final CommandActor actor, final int slice, final boolean intlify, final boolean statistics) {
-        final MLTrainer trainer = new MLTrainer(legitData, finalCheatingData, slice, true, intlify, statistics);
+    private void runTrainerTests(double[][][] legitData, double[][][] cheatingData, CommandActor actor, short column, boolean process, boolean enhanced) {
+        final MLTrainer trainer = new MLTrainer(legitData, cheatingData, column, true, process, enhanced, true);
 
         final var cheatingPlot = Grid.of(new double[][][]{trainer.getCheatingTrain(), trainer.getLegitTrain()});
         var pane = new FigurePane(cheatingPlot.figure());
@@ -203,18 +281,28 @@ public class BetterAnticheatCommand {
         double[][] cheatingTestData = trainer.getCheatingData();
 
         actor.reply("---- Decision Tree (Gini):");
-        testModelI32(trainer.getGiniTree(), legitTestData, cheatingTestData, actor);
+        testModelI32(trainer.getGiniTree(), legitTestData, cheatingTestData, 10, actor);
         actor.reply("---- Decision Tree (Entropy):");
-        testModelI32(trainer.getEntropyTree(), legitTestData, cheatingTestData, actor);
+        testModelI32(trainer.getEntropyTree(), legitTestData, cheatingTestData, 10, actor);
+
+        actor.reply("---- Random Forest (Gini) - OVERFITTING WARNING:");
+        testModelI32(trainer.getGiniForest(), legitTestData, cheatingTestData, 1, actor);
+        actor.reply("---- Random Forest (Entropy) - OVERFITTING WARNING:");
+        testModelI32(trainer.getEntropyForest(), legitTestData, cheatingTestData, 1, actor);
 
         actor.reply("---- Legacy Models:");
         testModel(trainer.trainLogisticRegression(), legitTestData, cheatingTestData, actor, trainer, "LogisticRegression");
         testModel(trainer.trainFLD(), legitTestData, cheatingTestData, actor, trainer, "FLD");
         testModel(trainer.trainKNN(), legitTestData, cheatingTestData, actor, trainer, "KNN");
-        testModel(trainer.trainLDA(), legitTestData, cheatingTestData, actor, trainer, "LDA");
+        try {
+            testModel(trainer.trainLDA(), legitTestData, cheatingTestData, actor, trainer, "LDA");
+        } catch (Exception e) {
+            actor.reply("Error while testing LDA: " + e.getMessage());
+            log.error("Error while testing LDA: ", e);
+        }
     }
 
-    private void testModelI32(final Classifier<Tuple> model, final double[][] legitData, final double[][] finalCheatingData, final CommandActor actor) {
+    private void testModelI32(final Classifier<Tuple> model, final double[][] legitData, final double[][] finalCheatingData, final int benchSize, final CommandActor actor) {
         var threshold = 5;
         var df = new DecimalFormat("#.######");
 
@@ -228,7 +316,7 @@ public class BetterAnticheatCommand {
 
         for (final var legitArray : legitData) {
 
-            final var prediction = model.predict(Tuple.of(struct, new int[]{(int) Math.round(legitArray[0] * 1_000_000), (int) Math.round(legitArray[1] * 1_000_000), (int) Math.round(legitArray[2] * 1_000_000), (int) Math.round(legitArray[3] * 1_000_000), (int) Math.round(legitArray[4] * 1_000_000)}));
+            final var prediction = model.predict(Tuple.of(struct, new int[]{(int) Math.round(legitArray[0] * 2_500_000), (int) Math.round(legitArray[1] * 2_500_000), (int) Math.round(legitArray[2] * 2_500_000), (int) Math.round(legitArray[3] * 2_500_000), (int) Math.round(legitArray[4] * 2_500_000)}));
             if (prediction < threshold) {
                 legitAsLegit++;
             } else {
@@ -239,7 +327,7 @@ public class BetterAnticheatCommand {
         }
 
         for (final var cheatingArray : finalCheatingData) {
-            final var prediction = model.predict(Tuple.of(struct, new int[]{(int) Math.round(cheatingArray[0] * 1_000_000), (int) Math.round(cheatingArray[1] * 1_000_000), (int) Math.round(cheatingArray[2] * 1_000_000), (int) Math.round(cheatingArray[3] * 1_000_000), (int) Math.round(cheatingArray[4] * 1_000_000)}));
+            final var prediction = model.predict(Tuple.of(struct, new int[]{(int) Math.round(cheatingArray[0] * 2_500_000), (int) Math.round(cheatingArray[1] * 2_500_000), (int) Math.round(cheatingArray[2] * 2_500_000), (int) Math.round(cheatingArray[3] * 2_500_000), (int) Math.round(cheatingArray[4] * 2_500_000)}));
             if (prediction < threshold) {
                 cheatingAsLegit++;
             } else {
@@ -250,16 +338,16 @@ public class BetterAnticheatCommand {
         }
 
         // Benchmark
-        final var times = new double[10];
-        final var benchmarkRuns = 100;
+        final var times = new double[benchSize];
+        final var benchmarkRuns = 80;
         for (int i = 0; i < times.length; i++) {
             var start = System.currentTimeMillis();
             for (int j = 0; j < benchmarkRuns; j++) {
                 for (final var legitArray : legitData) {
-                    model.predict(Tuple.of(struct, new int[]{(int) Math.round(legitArray[0] * 1_000_000), (int) Math.round(legitArray[1] * 1_000_000), (int) Math.round(legitArray[2] * 1_000_000), (int) Math.round(legitArray[3] * 1_000_000), (int) Math.round(legitArray[4] * 1_000_000)}));
+                    model.predict(Tuple.of(struct, new int[]{(int) Math.round(legitArray[0] * 2_500_000), (int) Math.round(legitArray[1] * 2_500_000), (int) Math.round(legitArray[2] * 2_500_000), (int) Math.round(legitArray[3] * 2_500_000), (int) Math.round(legitArray[4] * 2_500_000)}));
                 }
                 for (final var cheatingArray : finalCheatingData) {
-                    model.predict(Tuple.of(struct, new int[]{(int) Math.round(cheatingArray[0] * 1_000_000), (int) Math.round(cheatingArray[1] * 1_000_000), (int) Math.round(cheatingArray[2] * 1_000_000), (int) Math.round(cheatingArray[3] * 1_000_000), (int) Math.round(cheatingArray[4] * 1_000_000)}));
+                    model.predict(Tuple.of(struct, new int[]{(int) Math.round(cheatingArray[0] * 2_500_000), (int) Math.round(cheatingArray[1] * 2_500_000), (int) Math.round(cheatingArray[2] * 2_500_000), (int) Math.round(cheatingArray[3] * 2_500_000), (int) Math.round(cheatingArray[4] * 2_500_000)}));
                 }
             }
             var end = System.currentTimeMillis();
@@ -375,6 +463,19 @@ public class BetterAnticheatCommand {
         final var bytes = Files.readAllBytes(recordingDirectory.resolve(name + ".json"));
 
         return readData(bytes);
+    }
+
+    private @Nullable JSONObject loadRecordingJson(final String name) throws IOException {
+        final var recordingDirectory = directory.resolve("recording");
+        if (!recordingDirectory.toFile().exists()) {
+            recordingDirectory.toFile().mkdirs();
+        }
+        final var file = recordingDirectory.resolve(name + ".json");
+        if (!file.toFile().exists()) {
+            return null;
+        }
+        final var bytes = Files.readAllBytes(file);
+        return JSON.parseObject(new String(bytes, StandardCharsets.UTF_16LE));
     }
 
     private double[][][] readData(final byte[] bytes) {

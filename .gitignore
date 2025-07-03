@@ -28,3 +28,6 @@ replay_pid*
 /target
 /*/target
 *.iml
+
+# Per-user files #
+build.sh

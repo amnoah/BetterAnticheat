@@ -1,6 +1,7 @@
 package better.anticheat.core.check.broken;
 
 import better.anticheat.core.check.Check;
+import better.anticheat.core.check.CheckInfo;
 import com.github.retrooper.packetevents.event.simple.PacketPlayReceiveEvent;
 import com.github.retrooper.packetevents.event.simple.PacketPlaySendEvent;
 import com.github.retrooper.packetevents.protocol.packettype.PacketType;
@@ -10,13 +11,9 @@ import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerPl
 import java.util.ArrayList;
 import java.util.List;
 
+@CheckInfo(name = "TeleportConfirmOrder", category = "flying", config = "checks")
 public class TeleportConfirmOrderCheck extends Check {
-
     private final List<Integer> teleportIDs = new ArrayList<>();
-
-    public TeleportConfirmOrderCheck() {
-        super("TeleportConfirmOrder");
-    }
 
     @Override
     public void handleReceivePlayPacket(PacketPlayReceiveEvent event) {
