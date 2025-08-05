@@ -65,6 +65,7 @@ public class BetterAnticheat {
     private CookieAllocatorConfig cookieAllocatorConfig;
     private CookieSequenceData cookieSequenceData;
     private boolean entityTrackerFastAwaitingUpdate;
+    private boolean entityTrackerFastEntityBox;
     
     // Auto-record settings
     private boolean autoRecordEnabled;
@@ -78,11 +79,11 @@ public class BetterAnticheat {
         instance = this;
 
         this.checkManager = new CheckManager(this);
+        this.recordingSaver = new RecordingSaver(directory);
         this.commandManager = new CommandManager(this, lamp);
         this.lyricManager = new LyricManager();
         this.playerManager = new PlayerManager(this);
         this.punishmentManager = new PunishmentManager(this);
-        this.recordingSaver = new RecordingSaver(directory);
 
         /*
          * We only support 1.21+.
@@ -183,6 +184,7 @@ public class BetterAnticheat {
 
         // This is true in the default config but we set it to false here so people updating their server without knowing about the new config do not get fucked.
         this.entityTrackerFastAwaitingUpdate = settings.getObject(Boolean.class, "entity-tracker.fast-awaiting-update", false);
+        this.entityTrackerFastEntityBox = settings.getObject(Boolean.class, "entity-tracker.fast-entity-box", false);
 
         loadML(settings);
         loadCookieAllocator(settings);

@@ -165,7 +165,7 @@ ml:
       # Included: legit-small-2025-06-24-1 (notice: this comment does not update when the plugin is updated, so check the wiki for the latest version).
       legit-dataset-names: ["legit-small-2025-06-24-1", "legit-small-2025-07-29-1"]
       # Included: cheat-small-2025-06-24-1 (notice: this comment does not update when the plugin is updated, so check the wiki for the latest version).
-      cheat-dataset-names: ["cheat-small-2025-06-24-1"]
+      cheat-dataset-names: ["cheat-small-2025-06-24-1", "cheat-small-2025-07-29-1"]
       # Should we extract statistics from the data before using the model?
       statistics: false
       # Should we shrink both datasets to the same size?
@@ -206,7 +206,7 @@ ml:
       # Included: legit-small-2025-06-24-1 (notice: this comment does not update when the plugin is updated, so check the wiki for the latest version).
       legit-dataset-names: ["legit-small-2025-06-24-1", "legit-small-2025-07-29-1"]
       # Included: cheat-small-2025-06-24-1 (notice: this comment does not update when the plugin is updated, so check the wiki for the latest version).
-      cheat-dataset-names: ["cheat-small-2025-06-24-1"]
+      cheat-dataset-names: ["cheat-small-2025-06-24-1", "cheat-small-2025-07-29-1"]
       # Should we extract statistics from the data before using the model?
       statistics: true
       # Should we shrink both datasets to the same size?
@@ -310,3 +310,6 @@ entity-tracker:
   # Changes the way the entity tracker handles ticking interpolation when new movements are in flight.
   # This improves performance but may reduce strictness slightly.
   fast-awaiting-update: true
+  # Uses a new single box containing all other entity boxes instead of iterating over existing boxes when ray tracing.
+  # Is usually faster but may reduce strictness slightly.
+  fast-entity-box: true

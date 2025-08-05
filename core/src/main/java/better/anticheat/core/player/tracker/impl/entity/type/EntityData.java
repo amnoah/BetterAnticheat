@@ -1,8 +1,10 @@
 package better.anticheat.core.player.tracker.impl.entity.type;
 
 import better.anticheat.core.util.entity.ActivePlayerPose;
+import better.anticheat.core.util.type.entity.IAxisAlignedBoundingBox;
 import com.github.retrooper.packetevents.protocol.entity.pose.EntityPose;
 import com.github.retrooper.packetevents.protocol.entity.type.EntityType;
+import com.github.retrooper.packetevents.protocol.entity.type.EntityTypes;
 import lombok.Data;
 import org.jetbrains.annotations.NotNull;
 import wtf.spare.sparej.fastlist.FastObjectArrayList;
@@ -32,6 +34,9 @@ public class EntityData implements Comparable<EntityData> {
         return Integer.compare(o.getId(), this.id);
     }
 
+    /*
+     * Returns all entity states in this entity data tree
+     */
     @NotNull
     public List<EntityTrackerState> walk() {
         return walk(rootState, new FastObjectArrayList<>(Math.max(0, treeSize.get())));
@@ -46,6 +51,9 @@ public class EntityData implements Comparable<EntityData> {
         return existingEntries;
     }
 
+    /**
+     * Out of the current possible player poses, which is the max height?
+     */
     public double getMaxPlayerHeight() {
         double maxHeight = 0;
         for (final var pose : poses) {
@@ -53,4 +61,59 @@ public class EntityData implements Comparable<EntityData> {
         }
         return maxHeight;
     }
+
+    /**
+     * Out of the current possible player poses, which is the max width?
+     */
+    public double getMaxPlayerWidth() {
+        double maxWidth = 0;
+        for (final var pose : poses) {
+            maxWidth = Math.max(maxWidth, ActivePlayerPose.from(pose).getWidth());
+        }
+        return maxWidth;
+    }
+
+    /**
+     * Gets the combined bounding box of all entities in the tree.
+     */
+    public IAxisAlignedBoundingBox getCombinedBoundingBox() {
+        final var combinedBox = rootState.getBb().copy();
+        walkCombinedBox(rootState, combinedBox);
+
+        // Add the width/height pose offset if it is a player
+        if (type == EntityTypes.PLAYER) {
+            combinedBox.expand(
+                    // 0.6 is the default player width in the bounding box
+                    (getMaxPlayerWidth() - 0.6) / 2,
+                    // Only expand the max height, not both heights
+                    0,
+                    // 0.6 is the default player width in the bounding box
+                    (getMaxPlayerWidth() - 0.6) / 2
+            );
+
+            combinedBox.expandMax(
+                    // We already expanded the width above
+                    0,
+                    // 1.8 is the default player height in the bounding box
+                    (getMaxPlayerHeight() - 1.8),
+                    // We already expanded the width above
+                    0
+            );
+        }
+
+        return combinedBox;
+    }
+
+    private void walkCombinedBox(final EntityTrackerState parent, final IAxisAlignedBoundingBox combinedBox) {
+        for (final var child : parent.getChildren()) {
+            walkCombinedBox(child, combinedBox);
+        }
+        combinedBox.setMinX(Math.min(combinedBox.getMinX(), parent.getBb().getMinX() - parent.getPotentialOffsetAmountX()));
+        combinedBox.setMinY(Math.min(combinedBox.getMinY(), parent.getBb().getMinY() - parent.getPotentialOffsetAmountY()));
+        combinedBox.setMinZ(Math.min(combinedBox.getMinZ(), parent.getBb().getMinZ() - parent.getPotentialOffsetAmountZ()));
+        combinedBox.setMaxX(Math.max(combinedBox.getMaxX(), parent.getBb().getMaxX() + parent.getPotentialOffsetAmountX()));
+        combinedBox.setMaxY(Math.max(combinedBox.getMaxY(), parent.getBb().getMaxY() + parent.getPotentialOffsetAmountY()));
+        combinedBox.setMaxZ(Math.max(combinedBox.getMaxZ(), parent.getBb().getMaxZ() + parent.getPotentialOffsetAmountZ()));
+    }
+
 }

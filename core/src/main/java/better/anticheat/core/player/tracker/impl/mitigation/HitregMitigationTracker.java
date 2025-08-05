@@ -3,9 +3,10 @@ package better.anticheat.core.player.tracker.impl.mitigation;
 import better.anticheat.core.BetterAnticheat;
 import better.anticheat.core.player.Player;
 import better.anticheat.core.player.tracker.Tracker;
-import better.anticheat.core.util.entity.RayCastUtil;
+import better.anticheat.core.util.entity.raycast.SimpleRayCastUtil;
 import com.github.retrooper.packetevents.event.simple.PacketPlayReceiveEvent;
 import com.github.retrooper.packetevents.protocol.entity.type.EntityTypes;
+import com.github.retrooper.packetevents.protocol.player.ClientVersion;
 import com.github.retrooper.packetevents.protocol.player.InteractionHand;
 import com.github.retrooper.packetevents.protocol.world.Location;
 import com.github.retrooper.packetevents.util.Vector3f;
@@ -28,10 +29,14 @@ public class HitregMitigationTracker extends Tracker {
     private final IntIncrementer unprocessedFakeCounter = new IntIncrementer(0);
     private final IntIncrementer hitCancelCounter = new IntIncrementer(0);
     private final BetterAnticheat betterAnticheat;
+    private final SimpleRayCastUtil simpleRayCastUtil;
+    private final boolean supportsTickEnd;
 
     public HitregMitigationTracker(Player player, BetterAnticheat betterAnticheat) {
         super(player);
         this.betterAnticheat = betterAnticheat;
+        this.simpleRayCastUtil = new SimpleRayCastUtil(betterAnticheat);
+        this.supportsTickEnd = player.getUser().getClientVersion().isNewerThanOrEquals(ClientVersion.V_1_21_2);
     }
 
     @Override
@@ -136,7 +141,7 @@ public class HitregMitigationTracker extends Tracker {
                     // 0.2 is the hitbox cheat I want to give people.
                     var marginOfError = 0.005 + 0.2;
 
-                    final var rayCastResult = RayCastUtil.checkNormalPose(entity, yaws, pitches, positions, marginOfError, 0.1);
+                    final var rayCastResult = this.simpleRayCastUtil.checkNormalPose(entity, yaws, pitches, positions, marginOfError, 0.1);
 
                     // Inside entity, attack anyways because fuck cheaters
                     // if (rayCastResult.isCollided()) continue;
@@ -161,10 +166,22 @@ public class HitregMitigationTracker extends Tracker {
                     return;
                 }
             }
-            case CLIENT_TICK_END -> {
-                this.mitigationTicks.decrementOrMin(0);
-                this.hitCancelCounter.set(0);
+            case CLIENT_TICK_END -> tick();
+
+            // Legacy support
+            case PLAYER_FLYING,
+                 PLAYER_POSITION,
+                 PLAYER_ROTATION,
+                 PLAYER_POSITION_AND_ROTATION -> {
+                if (!this.supportsTickEnd) {
+                    tick();
+                }
             }
         }
+    }
+
+    private void tick() {
+        this.mitigationTicks.decrementOrMin(0);
+        this.hitCancelCounter.set(0);
     }
 }

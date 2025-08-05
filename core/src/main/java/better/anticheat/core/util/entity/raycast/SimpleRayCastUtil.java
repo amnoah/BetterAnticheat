@@ -1,41 +1,60 @@
-package better.anticheat.core.util.entity;
+package better.anticheat.core.util.entity.raycast;
 
+import better.anticheat.core.BetterAnticheat;
 import better.anticheat.core.player.tracker.impl.entity.type.EntityData;
+import better.anticheat.core.util.entity.RayCastResult;
 import better.anticheat.core.util.math.FastMathHelper;
 import better.anticheat.core.util.type.entity.AxisAlignedBB;
 import better.anticheat.core.util.type.entity.IAxisAlignedBoundingBox;
 import com.github.retrooper.packetevents.protocol.entity.type.EntityTypes;
 import com.github.retrooper.packetevents.util.Vector3d;
-import lombok.experimental.UtilityClass;
+import lombok.RequiredArgsConstructor;
 
 import java.util.Collection;
 
-@UtilityClass
-public class RayCastUtil {
+@RequiredArgsConstructor
+public class SimpleRayCastUtil {
+    private final BetterAnticheat betterAnticheat;
+
     public RayCastResult checkNormalPose(EntityData entityData, double[] yaws, double[] pitches,
                                          Collection<com.github.retrooper.packetevents.protocol.world.Location> locations, final double expand, final double verticalExpand) {
         Vector3d result = null;
         boolean collided = false;
         double distance = 0;
 
+        final var fastBB = this.betterAnticheat.isEntityTrackerFastEntityBox();
+
+
+        // The base box to use, declared here to support fastBB easier
+        //
+        IAxisAlignedBoundingBox bruteForceBox = null;
+        if (fastBB) {
+            // We already expand and do everything in the case of fastBB. this reduces allocations and performance a lot.
+            bruteForceBox = entityData.getCombinedBoundingBox();
+        }
+
         for (com.github.retrooper.packetevents.protocol.world.Location location : locations) {
             final var locationBox = new AxisAlignedBB(location.getX(), location.getY(), location.getZ(), 0.6, 1.8);
             for (final var box : entityData.walk()) {
                 for (double bruteForceYaw : yaws) {
                     for (double bruteForcePitch : pitches) {
-                        IAxisAlignedBoundingBox bruteForceBox;
-                        if (entityData.getType() == EntityTypes.PLAYER) {
-                            bruteForceBox = box.getBb().copy().expand(
-                                    expand + box.getPotentialOffsetAmountX(),
-                                    expand + verticalExpand + box.getPotentialOffsetAmountY() + (entityData.getMaxPlayerHeight() - 1.8),
-                                    expand + box.getPotentialOffsetAmountZ()
-                            );
-                        } else {
-                            bruteForceBox = box.getBb().copy().expand(
-                                    expand + box.getPotentialOffsetAmountX(),
-                                    expand + verticalExpand + box.getPotentialOffsetAmountY(),
-                                    expand + box.getPotentialOffsetAmountZ()
-                            );
+                        if (!fastBB) {
+                            if (entityData.getType() == EntityTypes.PLAYER) {
+                                bruteForceBox = box.getBb().copy().expand(
+                                        // 0.6 is the default player width in the bounding box
+                                        expand + box.getPotentialOffsetAmountX() + ((entityData.getMaxPlayerWidth() - 0.6) / 2),
+                                        // 1.8 is the default player height in the bounding box
+                                        expand + verticalExpand + box.getPotentialOffsetAmountY() + (entityData.getMaxPlayerHeight() - 1.8),
+                                        // 0.6 is the default player width in the bounding box
+                                        expand + box.getPotentialOffsetAmountZ() + ((entityData.getMaxPlayerWidth() - 0.6) / 2)
+                                );
+                            } else {
+                                bruteForceBox = box.getBb().copy().expand(
+                                        expand + box.getPotentialOffsetAmountX(),
+                                        expand + verticalExpand + box.getPotentialOffsetAmountY(),
+                                        expand + box.getPotentialOffsetAmountZ()
+                                );
+                            }
                         }
 
                         // 0.6 = attacker + target
@@ -63,6 +82,11 @@ public class RayCastUtil {
                             }
                         }
                     }
+                }
+
+                // No need to continue if using fastbb, as there is only one box.
+                if (fastBB) {
+                    break;
                 }
             }
         }
