@@ -64,6 +64,7 @@ public class BetterAnticheat {
     private boolean mitigationCombatDamageHitregEnabled;
     private CookieAllocatorConfig cookieAllocatorConfig;
     private CookieSequenceData cookieSequenceData;
+    public boolean entityTrackerFastAwaitingUpdate;
     
     // Auto-record settings
     private boolean autoRecordEnabled;
@@ -179,6 +180,8 @@ public class BetterAnticheat {
             this.autoRecordEnabled = false;
             this.autoRecordPermission = "better.anticheat.ml.record";
         }
+
+        this.entityTrackerFastAwaitingUpdate = settings.getObject(Boolean.class, "entity-tracker.fast-awaiting-update", false);
 
         loadML(settings);
         loadCookieAllocator(settings);

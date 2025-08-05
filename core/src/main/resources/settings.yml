@@ -305,3 +305,8 @@ cookie-allocator:
     title: "Hatikvah"
     # The maximum number of lyric lines to use (0 for all). Default: 0
     maxLines: 0
+
+entity-tracker:
+  # If true, the awaiting update loop will be replaced with a simpler for loop that just increments the offset thresholds on that specific entity state.
+  # This improves performance but may reduce strictness slightly.
+  fast-awaiting-update: false

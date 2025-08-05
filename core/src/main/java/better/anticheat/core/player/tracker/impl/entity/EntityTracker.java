@@ -1,5 +1,6 @@
 package better.anticheat.core.player.tracker.impl.entity;
 
+import better.anticheat.core.BetterAnticheat;
 import better.anticheat.core.DataBridge;
 import better.anticheat.core.player.Player;
 import better.anticheat.core.player.tracker.Tracker;
@@ -40,7 +41,8 @@ import java.util.List;
 
 @Slf4j
 public class EntityTracker extends Tracker {
-    public EntityTracker(final Player player, final ConfirmationTracker confirmationTracker, final PositionTracker positionTracker, final DataBridge<?> bridge) {
+    public EntityTracker(final Player player, final ConfirmationTracker confirmationTracker,
+            final PositionTracker positionTracker, final DataBridge<?> bridge) {
         super(player);
         this.confirmationTracker = confirmationTracker;
         this.positionTracker = positionTracker;
@@ -103,7 +105,8 @@ public class EntityTracker extends Tracker {
             }
             case ENTITY_TELEPORT: {
                 final var wrapper = new WrapperPlayServerEntityTeleport(event);
-                this.teleport(wrapper.getEntityId(), wrapper.getPosition().getX(), wrapper.getPosition().getY(), wrapper.getPosition().getZ());
+                this.teleport(wrapper.getEntityId(), wrapper.getPosition().getX(), wrapper.getPosition().getY(),
+                        wrapper.getPosition().getZ());
                 break;
             }
             case ENTITY_METADATA: {
@@ -118,7 +121,8 @@ public class EntityTracker extends Tracker {
 
     @Override
     public void handlePacketPlayReceive(final PacketPlayReceiveEvent event) {
-        // WrapperPlayClientPlayerFlying is the base class for position, look, and position_look
+        // WrapperPlayClientPlayerFlying is the base class for position, look, and
+        // position_look
         final var type = event.getPacketType();
 
         if (WrapperPlayClientPlayerFlying.isFlying(type)) {
@@ -126,13 +130,15 @@ public class EntityTracker extends Tracker {
             this.tickEndSinceFlying = false;
             this.onLivingUpdate();
 
-            // If client doesn't support tick end, emulate "end of tick" once per flying sequence
+            // If client doesn't support tick end, emulate "end of tick" once per flying
+            // sequence
             if (supportsTickEnd) {
                 return;
             }
 
             for (EntityData data : entities.values()) {
-                if (data.getTicksSinceMove().get() >= 0) data.getTicksSinceMove().increment();
+                if (data.getTicksSinceMove().get() >= 0)
+                    data.getTicksSinceMove().increment();
             }
 
             if (!this.tickEndSinceFlying) {
@@ -144,11 +150,14 @@ public class EntityTracker extends Tracker {
         if (supportsTickEnd && type == PacketType.Play.Client.CLIENT_TICK_END) {
             /*
              * This is a value that can be important for some aim checks.
-             * After a start confirmation, it will remain as -1 until the after confirmation. Then, it will begin
-             * to tick. I'd prefer for this to happen at the end of the tick rather than on the living update.
+             * After a start confirmation, it will remain as -1 until the after
+             * confirmation. Then, it will begin
+             * to tick. I'd prefer for this to happen at the end of the tick rather than on
+             * the living update.
              */
             for (EntityData data : entities.values()) {
-                if (data.getTicksSinceMove().get() >= 0) data.getTicksSinceMove().increment();
+                if (data.getTicksSinceMove().get() >= 0)
+                    data.getTicksSinceMove().increment();
             }
 
             if (!this.tickEndSinceFlying) {
@@ -167,11 +176,13 @@ public class EntityTracker extends Tracker {
     /**
      * Creates an entity
      */
-    public void createEntity(final int entityId, final @NotNull Vector3d position, final @NotNull EntityType type, final int retries) {
+    public void createEntity(final int entityId, final @NotNull Vector3d position, final @NotNull EntityType type,
+            final int retries) {
         if (this.entities.containsKey(entityId)) {
             // Prevent performance issues.
             if (retries < 10) {
-                bridge.runTaskLater(getPlayer().getUser(), () -> createEntity(entityId, position, type, retries + 1), 5);
+                bridge.runTaskLater(getPlayer().getUser(), () -> createEntity(entityId, position, type, retries + 1),
+                        5);
             }
             return;
         }
@@ -184,18 +195,20 @@ public class EntityTracker extends Tracker {
         entityData.setServerPosY(new DoubleBiState(position.getY()));
         entityData.setServerPosZ(new DoubleBiState(position.getZ()));
 
-        final var root = new EntityTrackerState(null, entityData, createEntityBox(entityData.getWidth(), entityData.getHeight(), position),
+        final var root = new EntityTrackerState(null, entityData,
+                createEntityBox(entityData.getWidth(), entityData.getHeight(), position),
                 position.getZ(), position.getY(), position.getX());
 
         entityData.setRootState(root);
         this.entities.put(entityId, entityData);
     }
 
-
     /**
      * Handles entity metadata updates from the server.
-     * Processes only the metadata of type ENTITY_POSE and updates the entity's poses accordingly.
-     * Utilizes a confirmation mechanism to ensure consistency before and after metadata application.
+     * Processes only the metadata of type ENTITY_POSE and updates the entity's
+     * poses accordingly.
+     * Utilizes a confirmation mechanism to ensure consistency before and after
+     * metadata application.
      *
      * @param wrapper the metadata packet containing entity ID and metadata entries
      */
@@ -230,7 +243,9 @@ public class EntityTracker extends Tracker {
         final var newState = new FastObjectArrayList<EntityTrackerState>();
 
         confirmation.onBegin(() -> {
-            log.debug("Started relative move for entity {} at {}, {}, {}", entityId, entity.getServerPosX().getCurrent(), entity.getServerPosY().getCurrent(), entity.getServerPosZ().getCurrent());
+            log.debug("Started relative move for entity {} at {}, {}, {}", entityId,
+                    entity.getServerPosX().getCurrent(), entity.getServerPosY().getCurrent(),
+                    entity.getServerPosZ().getCurrent());
             final var originalRoot = entity.getRootState().cloneWithoutChildren();
 
             entity.getServerPosX().addNew(entity.getServerPosX().getCurrent() + deltaX);
@@ -250,7 +265,9 @@ public class EntityTracker extends Tracker {
         });
 
         confirmation.onAfterConfirm(() -> {
-            log.debug("Completed relative move for entity {} at {}, {}, {}", entityId, entity.getServerPosX().getCurrent(), entity.getServerPosY().getCurrent(), entity.getServerPosZ().getCurrent());
+            log.debug("Completed relative move for entity {} at {}, {}, {}", entityId,
+                    entity.getServerPosX().getCurrent(), entity.getServerPosY().getCurrent(),
+                    entity.getServerPosZ().getCurrent());
 
             // Update all then shake tree
             entity.getServerPosX().flushOld();
@@ -268,9 +285,11 @@ public class EntityTracker extends Tracker {
                     removedCnt++;
                 } else {
                     for (final var child : neww.getChildren()) {
-                        setPositionAndRotation2(child, entity.getServerPosX().getCurrent(), entity.getServerPosY().getCurrent(), entity.getServerPosY().getCurrent());
+                        setPositionAndRotation2(child, entity.getServerPosX().getCurrent(),
+                                entity.getServerPosY().getCurrent(), entity.getServerPosY().getCurrent());
                     }
-                    setPositionAndRotation2(neww, entity.getServerPosX().getCurrent(), entity.getServerPosY().getCurrent(), entity.getServerPosY().getCurrent());
+                    setPositionAndRotation2(neww, entity.getServerPosX().getCurrent(),
+                            entity.getServerPosY().getCurrent(), entity.getServerPosY().getCurrent());
                 }
             }
 
@@ -293,7 +312,8 @@ public class EntityTracker extends Tracker {
      * handles a relmove packet on PRE tranny
      */
     public void recursivelyRelMovePre(final EntityTrackerState state, final int depth) {
-        if (stateBuffer2.indexOfExact(state) != -1) return;
+        if (stateBuffer2.indexOfExact(state) != -1)
+            return;
 
         if (depth < 7) {
             // This + depth checking can remove very low chance branches.
@@ -302,7 +322,8 @@ public class EntityTracker extends Tracker {
                     || Math.abs(state.getPosZ() - state.getData().getServerPosZ().getCurrent()) > 0.005;
 
             if (shouldClone) {
-                // Clone first - the children will be cloned themselves. This improves performance a little.
+                // Clone first - the children will be cloned themselves. This improves
+                // performance a little.
                 final var neww = state.newChild(state, false, false);
 
                 // Recursively run
@@ -312,7 +333,8 @@ public class EntityTracker extends Tracker {
                     recursivelyRelMovePre(child, childDepth);
                 }
 
-                // Add the clone after doing recursion to avoid accidentally setting the pos on the old entity state.
+                // Add the clone after doing recursion to avoid accidentally setting the pos on
+                // the old entity state.
                 state.getData().getTreeSize().increment(1);
                 state.getChildren().add(neww);
 
@@ -334,7 +356,8 @@ public class EntityTracker extends Tracker {
         }
 
         // Set the data
-        setPositionAndRotation2(state, state.getData().getServerPosX().getCurrent(), state.getData().getServerPosY().getCurrent(), state.getData().getServerPosZ().getCurrent());
+        setPositionAndRotation2(state, state.getData().getServerPosX().getCurrent(),
+                state.getData().getServerPosY().getCurrent(), state.getData().getServerPosZ().getCurrent());
     }
 
     public void teleport(final int entityId, final double x, final double y, final double z) {
@@ -362,7 +385,8 @@ public class EntityTracker extends Tracker {
         });
 
         confirmation.onAfterConfirm((a) -> {
-            log.debug("flushed to {} {} {} due to teleport, beginning tree update", entity.getServerPosX().getCurrent(), entity.getServerPosY().getCurrent(), entity.getServerPosZ().getCurrent());
+            log.debug("flushed to {} {} {} due to teleport, beginning tree update", entity.getServerPosX().getCurrent(),
+                    entity.getServerPosY().getCurrent(), entity.getServerPosZ().getCurrent());
 
             // Update all then shake tree
             entity.getServerPosX().flushOld();
@@ -371,12 +395,15 @@ public class EntityTracker extends Tracker {
 
             for (final var neww : newState) {
                 for (final var child : neww.getChildren()) {
-                    setPositionAndRotation2(child, entity.getServerPosX().getCurrent(), entity.getServerPosY().getCurrent(), entity.getServerPosZ().getCurrent());
+                    setPositionAndRotation2(child, entity.getServerPosX().getCurrent(),
+                            entity.getServerPosY().getCurrent(), entity.getServerPosZ().getCurrent());
                 }
-                setPositionAndRotation2(neww, entity.getServerPosX().getCurrent(), entity.getServerPosY().getCurrent(), entity.getServerPosZ().getCurrent());
+                setPositionAndRotation2(neww, entity.getServerPosX().getCurrent(), entity.getServerPosY().getCurrent(),
+                        entity.getServerPosZ().getCurrent());
             }
 
-            // We just did a tp, we can prune some old branches. This will improve performance.
+            // We just did a tp, we can prune some old branches. This will improve
+            // performance.
             treeShrinkRecursive(entity.getRootState(), 0, 4);
 
             // Do a basic tree shake to remove duplicates
@@ -391,11 +418,31 @@ public class EntityTracker extends Tracker {
      */
     public void onLivingUpdate() {
         // Handle splits
-        for (final var awaitingUpdate : this.awaitingUpdates) {
-            // Max of 3 updates.
-            if (awaitingUpdate.getFlyings().increment() > 1 && awaitingUpdate.getFlyings().get() <= 4) {
-                final var newUpdate = awaitingUpdate.getOldState().newChild(awaitingUpdate.getData().getRootState(), false);
-                setPositionAndRotation2(newUpdate, awaitingUpdate.getX(), awaitingUpdate.getY(), awaitingUpdate.getZ());
+        if (BetterAnticheat.getInstance().entityTrackerFastAwaitingUpdate) {
+            for (final var awaitingUpdate : this.awaitingUpdates) {
+                if (awaitingUpdate.getFlyings().increment() < 1 || awaitingUpdate.getFlyings().get() > 3) {
+                    continue;
+                }
+                final var oldState = awaitingUpdate.getOldState();
+                final int increments = 4 - awaitingUpdate.getFlyings().get();
+                if (increments > 0) {
+                    final double d0 = (awaitingUpdate.getX() - oldState.getPosX()) / increments;
+                    final double d1 = (awaitingUpdate.getY() - oldState.getPosY()) / increments;
+                    final double d2 = (awaitingUpdate.getZ() - oldState.getPosZ()) / increments;
+
+                    oldState.addOffsetABS(d0, d1, d2);
+                }
+            }
+        } else {
+            for (final var awaitingUpdate : this.awaitingUpdates) {
+                // Max of 3 updates.
+                if (awaitingUpdate.getFlyings().increment() < 1 || awaitingUpdate.getFlyings().get() > 3) {
+                    continue;
+                }
+                final var newUpdate = awaitingUpdate.getOldState().newChild(awaitingUpdate.getData().getRootState(),
+                        false);
+                setPositionAndRotation2(newUpdate, awaitingUpdate.getX(), awaitingUpdate.getY(),
+                        awaitingUpdate.getZ());
 
                 // Add the new child.
                 awaitingUpdate.getData().getTreeSize().increment(newUpdate.getChildren().size() + 1);
@@ -435,7 +482,8 @@ public class EntityTracker extends Tracker {
                 shakeTreeRecursive(entityData.getRootState(), (state) -> {
                     var statee = (EntityTrackerState) state;
                     var hashCode = statee.liteHashCode();
-                    var remove = treeShakeMap.get(hashCode) == statee || (statee.getParent() != null && statee.distance(statee.getParent()) < maxDelta);
+                    var remove = treeShakeMap.get(hashCode) == statee
+                            || (statee.getParent() != null && statee.distance(statee.getParent()) < maxDelta);
                     if (!remove && !treeShakeMap.containsKey(hashCode)) {
                         treeShakeMap.put(hashCode, statee);
                     }
@@ -472,11 +520,13 @@ public class EntityTracker extends Tracker {
     /**
      * Create the bounding box for an entity
      */
-    public @NotNull AxisAlignedBB createEntityBox(final float width, final float height, final @NotNull Vector3d vector3d) {
+    public @NotNull AxisAlignedBB createEntityBox(final float width, final float height,
+            final @NotNull Vector3d vector3d) {
         return new AxisAlignedBB(vector3d.getX(), vector3d.getY(), vector3d.getZ(), width, height);
     }
 
-    public @NotNull List<EntityData> getEntitiesWithinAABBExcludingEntity(final int entityId, final @NotNull AxisAlignedBB bb) {
+    public @NotNull List<EntityData> getEntitiesWithinAABBExcludingEntity(final int entityId,
+            final @NotNull AxisAlignedBB bb) {
         final var entities = new ArrayList<EntityData>();
         for (final var value : this.entities.values()) {
             if (value.getId() == entityId) {
@@ -498,7 +548,8 @@ public class EntityTracker extends Tracker {
         if (depth > 4 || (Math.abs(state.getData().getServerPosX().getCurrent() - state.getOtherPlayerMPX()) < 0.005 &&
                 Math.abs(state.getData().getServerPosY().getCurrent() - state.getOtherPlayerMPY()) < 0.005 &&
                 Math.abs(state.getData().getServerPosZ().getCurrent() - state.getOtherPlayerMPZ()) < 0.005)) {
-            setPositionAndRotation2(state, state.getData().getServerPosX().getCurrent(), state.getData().getServerPosY().getCurrent(), state.getData().getServerPosZ().getCurrent());
+            setPositionAndRotation2(state, state.getData().getServerPosX().getCurrent(),
+                    state.getData().getServerPosY().getCurrent(), state.getData().getServerPosZ().getCurrent());
             for (final var child : state.getChildren()) {
                 recursivelyTeleportPre(child, depth + 1);
             }
@@ -511,7 +562,8 @@ public class EntityTracker extends Tracker {
                 recursivelyTeleportPre(child, depth + 1);
             }
 
-            // Add the clone after doing recursion to avoid accidentally setting the pos on the old entity state.
+            // Add the clone after doing recursion to avoid accidentally setting the pos on
+            // the old entity state.
             state.getData().getTreeSize().increment(1 + neww.getChildren().size());
             state.getChildren().add(neww);
 
@@ -519,11 +571,13 @@ public class EntityTracker extends Tracker {
             this.stateBuffer.add(neww);
 
             // Set the data
-            setPositionAndRotation2(state, state.getData().getServerPosX().getCurrent(), state.getData().getServerPosY().getCurrent(), state.getData().getServerPosZ().getCurrent());
+            setPositionAndRotation2(state, state.getData().getServerPosX().getCurrent(),
+                    state.getData().getServerPosY().getCurrent(), state.getData().getServerPosZ().getCurrent());
         }
     }
 
-    private void setPositionAndRotation2(final EntityTrackerState state, final double x, final double y, final double z) {
+    private void setPositionAndRotation2(final EntityTrackerState state, final double x, final double y,
+            final double z) {
         state.setOtherPlayerMPX(x);
         state.setOtherPlayerMPY(y);
         state.setOtherPlayerMPZ(z);
@@ -538,11 +592,14 @@ public class EntityTracker extends Tracker {
     public int onLivingUpdateRecursive(final EntityTrackerState state) {
         int cnt = 0;
         if (state.getOtherPlayerMPPosRotationIncrements() > 0) {
-            final double d0 = state.getPosX() + (state.getOtherPlayerMPX() - state.getPosX()) / state.getOtherPlayerMPPosRotationIncrements();
-            final double d1 = state.getPosY() + (state.getOtherPlayerMPY() - state.getPosY()) / state.getOtherPlayerMPPosRotationIncrements();
-            final double d2 = state.getPosZ() + (state.getOtherPlayerMPZ() - state.getPosZ()) / state.getOtherPlayerMPPosRotationIncrements();
+            final double d0 = state.getPosX()
+                    + (state.getOtherPlayerMPX() - state.getPosX()) / state.getOtherPlayerMPPosRotationIncrements();
+            final double d1 = state.getPosY()
+                    + (state.getOtherPlayerMPY() - state.getPosY()) / state.getOtherPlayerMPPosRotationIncrements();
+            final double d2 = state.getPosZ()
+                    + (state.getOtherPlayerMPZ() - state.getPosZ()) / state.getOtherPlayerMPPosRotationIncrements();
 
-            state.addOffsetABS(d0, d1, d2);
+            // was an old add offset call here before
 
             state.setOtherPlayerMPPosRotationIncrements(state.getOtherPlayerMPPosRotationIncrements() - 1);
 
@@ -565,7 +622,8 @@ public class EntityTracker extends Tracker {
             state.getBb().setMinZ(state.getPosZ() + f);
 
             // Total moves this tick
-            if (Math.abs(lastPosX - state.getPosX()) > 0.0005D || Math.abs(lastPosY - state.getPosY()) > 0.0005D || Math.abs(lastPosZ - state.getPosZ()) > 0.0005D) {
+            if (Math.abs(lastPosX - state.getPosX()) > 0.0005D || Math.abs(lastPosY - state.getPosY()) > 0.0005D
+                    || Math.abs(lastPosZ - state.getPosZ()) > 0.0005D) {
                 this.totalMovesThisTick++;
 
                 if (state.getOtherPlayerMPPosRotationIncrements() == 0) {
@@ -614,10 +672,12 @@ public class EntityTracker extends Tracker {
     /**
      * Runs the actual logic for tree shaking.
      */
-    private void shakeTreeRecursive(final EntityTrackerState entityTrackerState, final Object2BooleanFunction<EntityTrackerState> shouldDelete) {
+    private void shakeTreeRecursive(final EntityTrackerState entityTrackerState,
+            final Object2BooleanFunction<EntityTrackerState> shouldDelete) {
         stateBuffer.clear(); // Flush old buffers.
 
-        // Remove duplicated entries, and copy their children to the parent (current) node.
+        // Remove duplicated entries, and copy their children to the parent (current)
+        // node.
         for (final var child : entityTrackerState.getChildren()) {
             if (shouldDelete.getBoolean(child)) {
                 // Decrement and remove
@@ -631,7 +691,8 @@ public class EntityTracker extends Tracker {
             }
         }
 
-        // If state buffer is not empty, then add it to children, and call this again until it works.
+        // If state buffer is not empty, then add it to children, and call this again
+        // until it works.
         if (!stateBuffer.isEmpty()) {
             // Copy and flush the data buffer.
             entityTrackerState.getData().getTreeSize().increment(stateBuffer.size());
@@ -662,7 +723,8 @@ public class EntityTracker extends Tracker {
      */
     public List<EntityData> getCollidingEntities(final AxisAlignedBB bbThis, final List<EntityData> out) {
         for (final var edata : this.entities.values()) {
-            if (edata.getId() == getPlayer().getUser().getEntityId()) continue;
+            if (edata.getId() == getPlayer().getUser().getEntityId())
+                continue;
 
             final var bb = edata.getRootState().getBb();
 
