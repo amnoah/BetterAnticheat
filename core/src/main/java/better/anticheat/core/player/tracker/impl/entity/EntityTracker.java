@@ -229,7 +229,7 @@ public class EntityTracker extends Tracker {
     public void relMove(final int entityId, final double deltaX, final double deltaY, final double deltaZ) {
         var confirmation = confirmationTracker.confirm();
         if (!this.entities.containsKey(entityId)) {
-            confirmation.onBegin(() -> relMove(entityId, deltaX, deltaY, deltaZ));
+            confirmation.onAfterConfirm(() -> relMove(entityId, deltaX, deltaY, deltaZ));
             return;
         }
 
