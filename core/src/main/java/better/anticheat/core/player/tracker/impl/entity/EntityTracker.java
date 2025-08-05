@@ -121,8 +121,7 @@ public class EntityTracker extends Tracker {
 
     @Override
     public void handlePacketPlayReceive(final PacketPlayReceiveEvent event) {
-        // WrapperPlayClientPlayerFlying is the base class for position, look, and
-        // position_look
+        // WrapperPlayClientPlayerFlying is the base class for position, look, and position_look
         final var type = event.getPacketType();
 
         if (WrapperPlayClientPlayerFlying.isFlying(type)) {
@@ -130,8 +129,7 @@ public class EntityTracker extends Tracker {
             this.tickEndSinceFlying = false;
             this.onLivingUpdate();
 
-            // If client doesn't support tick end, emulate "end of tick" once per flying
-            // sequence
+            // If client doesn't support tick end, emulate "end of tick" once per flying sequence
             if (supportsTickEnd) {
                 return;
             }
@@ -150,10 +148,8 @@ public class EntityTracker extends Tracker {
         if (supportsTickEnd && type == PacketType.Play.Client.CLIENT_TICK_END) {
             /*
              * This is a value that can be important for some aim checks.
-             * After a start confirmation, it will remain as -1 until the after
-             * confirmation. Then, it will begin
-             * to tick. I'd prefer for this to happen at the end of the tick rather than on
-             * the living update.
+             * After a start confirmation, it will remain as -1 until the after confirmation. Then, it will begin to tick.
+             * I'd prefer for this to happen at the end of the tick rather than on the living update.
              */
             for (EntityData data : entities.values()) {
                 if (data.getTicksSinceMove().get() >= 0)
@@ -205,10 +201,8 @@ public class EntityTracker extends Tracker {
 
     /**
      * Handles entity metadata updates from the server.
-     * Processes only the metadata of type ENTITY_POSE and updates the entity's
-     * poses accordingly.
-     * Utilizes a confirmation mechanism to ensure consistency before and after
-     * metadata application.
+     * Processes only the metadata of type ENTITY_POSE and updates the entity's poses accordingly.
+     * Utilizes a confirmation mechanism to ensure consistency before and after metadata application.
      *
      * @param wrapper the metadata packet containing entity ID and metadata entries
      */
@@ -418,7 +412,7 @@ public class EntityTracker extends Tracker {
      */
     public void onLivingUpdate() {
         // Handle splits
-        if (BetterAnticheat.getInstance().entityTrackerFastAwaitingUpdate) {
+        if (BetterAnticheat.getInstance().isEntityTrackerFastAwaitingUpdate()) {
             for (final var awaitingUpdate : this.awaitingUpdates) {
                 if (awaitingUpdate.getFlyings().increment() < 1 || awaitingUpdate.getFlyings().get() > 3) {
                     continue;
@@ -676,8 +670,7 @@ public class EntityTracker extends Tracker {
             final Object2BooleanFunction<EntityTrackerState> shouldDelete) {
         stateBuffer.clear(); // Flush old buffers.
 
-        // Remove duplicated entries, and copy their children to the parent (current)
-        // node.
+        // Remove duplicated entries, and copy their children to the parent (current) node.
         for (final var child : entityTrackerState.getChildren()) {
             if (shouldDelete.getBoolean(child)) {
                 // Decrement and remove
@@ -691,8 +684,7 @@ public class EntityTracker extends Tracker {
             }
         }
 
-        // If state buffer is not empty, then add it to children, and call this again
-        // until it works.
+        // If state buffer is not empty, then add it to children, and call this again until it works.
         if (!stateBuffer.isEmpty()) {
             // Copy and flush the data buffer.
             entityTrackerState.getData().getTreeSize().increment(stateBuffer.size());

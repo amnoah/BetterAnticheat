@@ -64,7 +64,7 @@ public class BetterAnticheat {
     private boolean mitigationCombatDamageHitregEnabled;
     private CookieAllocatorConfig cookieAllocatorConfig;
     private CookieSequenceData cookieSequenceData;
-    public boolean entityTrackerFastAwaitingUpdate;
+    private boolean entityTrackerFastAwaitingUpdate;
     
     // Auto-record settings
     private boolean autoRecordEnabled;
