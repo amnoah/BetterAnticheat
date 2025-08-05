@@ -163,7 +163,7 @@ ml:
       # The data slice to use (0 for yaw changes, 1 for offsets, 2 for combined).
       slice: 0
       # Included: legit-small-2025-06-24-1 (notice: this comment does not update when the plugin is updated, so check the wiki for the latest version).
-      legit-dataset-names: ["legit-small-2025-06-24-1"]
+      legit-dataset-names: ["legit-small-2025-06-24-1", "legit-small-2025-07-29-1"]
       # Included: cheat-small-2025-06-24-1 (notice: this comment does not update when the plugin is updated, so check the wiki for the latest version).
       cheat-dataset-names: ["cheat-small-2025-06-24-1"]
       # Should we extract statistics from the data before using the model?
@@ -204,7 +204,7 @@ ml:
       # The data slice to use (0 for yaw changes, 1 for offsets, 2 for combined).
       slice: 2
       # Included: legit-small-2025-06-24-1 (notice: this comment does not update when the plugin is updated, so check the wiki for the latest version).
-      legit-dataset-names: ["legit-small-2025-06-24-1"]
+      legit-dataset-names: ["legit-small-2025-06-24-1", "legit-small-2025-07-29-1"]
       # Included: cheat-small-2025-06-24-1 (notice: this comment does not update when the plugin is updated, so check the wiki for the latest version).
       cheat-dataset-names: ["cheat-small-2025-06-24-1"]
       # Should we extract statistics from the data before using the model?
