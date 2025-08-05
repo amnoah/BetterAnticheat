@@ -593,7 +593,7 @@ public class EntityTracker extends Tracker {
             final double d2 = state.getPosZ()
                     + (state.getOtherPlayerMPZ() - state.getPosZ()) / state.getOtherPlayerMPPosRotationIncrements();
 
-            // was an old add offset call here before
+            // there used to be an old add offset call here
 
             state.setOtherPlayerMPPosRotationIncrements(state.getOtherPlayerMPPosRotationIncrements() - 1);
 
@@ -624,10 +624,11 @@ public class EntityTracker extends Tracker {
                     cnt++;
                 }
             }
-        } else {
+        } else if (state.getOtherPlayerMPPosRotationIncrements() == 0) {
             state.setPotentialOffsetAmountX(0);
             state.setPotentialOffsetAmountY(0);
             state.setPotentialOffsetAmountZ(0);
+            state.setOtherPlayerMPPosRotationIncrements(-1);
         }
 
         for (final var child : state.getChildren()) {

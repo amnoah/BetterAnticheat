@@ -3,6 +3,8 @@ package better.anticheat.core.util.entity;
 import better.anticheat.core.player.tracker.impl.entity.type.EntityData;
 import better.anticheat.core.util.math.FastMathHelper;
 import better.anticheat.core.util.type.entity.AxisAlignedBB;
+import better.anticheat.core.util.type.entity.IAxisAlignedBoundingBox;
+import com.github.retrooper.packetevents.protocol.entity.type.EntityTypes;
 import com.github.retrooper.packetevents.util.Vector3d;
 import lombok.experimental.UtilityClass;
 
@@ -21,11 +23,20 @@ public class RayCastUtil {
             for (final var box : entityData.walk()) {
                 for (double bruteForceYaw : yaws) {
                     for (double bruteForcePitch : pitches) {
-                        final var bruteForceBox = box.getBb().copy().expand(
-                                expand + box.getPotentialOffsetAmount(),
-                                expand + verticalExpand + box.getPotentialOffsetAmount(),
-                                expand + box.getPotentialOffsetAmount()
-                        );
+                        IAxisAlignedBoundingBox bruteForceBox;
+                        if (entityData.getType() == EntityTypes.PLAYER) {
+                            bruteForceBox = box.getBb().copy().expand(
+                                    expand + box.getPotentialOffsetAmountX(),
+                                    expand + verticalExpand + box.getPotentialOffsetAmountY() + (entityData.getMaxPlayerHeight() - 1.8),
+                                    expand + box.getPotentialOffsetAmountZ()
+                            );
+                        } else {
+                            bruteForceBox = box.getBb().copy().expand(
+                                    expand + box.getPotentialOffsetAmountX(),
+                                    expand + verticalExpand + box.getPotentialOffsetAmountY(),
+                                    expand + box.getPotentialOffsetAmountZ()
+                            );
+                        }
 
                         // 0.6 = attacker + target
 

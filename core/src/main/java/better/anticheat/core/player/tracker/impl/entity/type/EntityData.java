@@ -1,5 +1,6 @@
 package better.anticheat.core.player.tracker.impl.entity.type;
 
+import better.anticheat.core.util.entity.ActivePlayerPose;
 import com.github.retrooper.packetevents.protocol.entity.pose.EntityPose;
 import com.github.retrooper.packetevents.protocol.entity.type.EntityType;
 import lombok.Data;
@@ -13,7 +14,7 @@ import java.util.EnumMap;
 import java.util.List;
 
 @Data
-public class EntityData {
+public class EntityData implements Comparable<EntityData> {
     public final int id;
     private final EntityType type;
     private final EnumMap<EntityAttribute, Object> attributes = new EnumMap<>(EntityAttribute.class);
@@ -43,5 +44,13 @@ public class EntityData {
         }
         existingEntries.add(parent);
         return existingEntries;
+    }
+
+    public double getMaxPlayerHeight() {
+        double maxHeight = 0;
+        for (final var pose : poses) {
+            maxHeight = Math.max(maxHeight, ActivePlayerPose.from(pose).getOverallHeight());
+        }
+        return maxHeight;
     }
 }
