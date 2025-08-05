@@ -181,6 +181,7 @@ public class BetterAnticheat {
             this.autoRecordPermission = "better.anticheat.ml.record";
         }
 
+        // This is true in the default config but we set it to false here so people updating their server without knowing about the new config do not get fucked.
         this.entityTrackerFastAwaitingUpdate = settings.getObject(Boolean.class, "entity-tracker.fast-awaiting-update", false);
 
         loadML(settings);

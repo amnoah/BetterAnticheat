@@ -307,6 +307,6 @@ cookie-allocator:
     maxLines: 0
 
 entity-tracker:
-  # If true, the awaiting update loop will be replaced with a simpler for loop that just increments the offset thresholds on that specific entity state.
+  # Changes the way the entity tracker handles ticking interpolation when new movements are in flight.
   # This improves performance but may reduce strictness slightly.
-  fast-awaiting-update: false
+  fast-awaiting-update: true
