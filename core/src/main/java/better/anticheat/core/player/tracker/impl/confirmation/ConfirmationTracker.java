@@ -225,7 +225,7 @@ public class ConfirmationTracker extends Tracker {
             return acquiredConfirmation;
         }
 
-        // Sent last tick, and NOT this tick (12ms ago for exemplar), therefore is a perfect pre confirmation option
+        // Is queued before this packet and not too old, therefore is a perfect pre confirmation option
         var sentOption = EasyLoops.findFirst(confirmations, c -> c.getType() == ConfirmationType.KEEPALIVE & c.getTimestampConfirmed() == -1L & now - c.getTimestamp() <= 120);
         // Check if there is a sendoption except there is no keepalive sendoption.
         if (sentOption != null) {
