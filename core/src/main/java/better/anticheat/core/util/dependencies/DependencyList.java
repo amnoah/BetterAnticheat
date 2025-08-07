@@ -18,12 +18,13 @@ public class DependencyList {
             "com.alibaba.fastjson2:fastjson2:2.0.57",
             "org.apache.fory:fory-core:0.11.2",
             // Start: Extra items because Libby is a pile of trash and does not resolve dependencies of dependencies section
-            "com.github.haifengl:smile-base:4.4.0",
-            "org.apache.commons:commons-csv:1.14.0",
-            "org.bytedeco:javacpp:1.5.12",
-            "org.bytedeco:openblas:0.3.30-1.5.12",
-            "org.bytedeco:arpack-ng:3.9.1-1.5.12",
-            "org.duckdb:duckdb_jdbc:1.3.2.0",
+            "com.github.haifengl:smile-base:4.4.0", // A dependency of smile. Update it as smile updates.
+            "org.apache.commons:commons-csv:1.14.0", // A dependency of smile. Update it as smile updates.
+            "org.bytedeco:javacpp:1.5.12", // A dependency of smile. Update it as smile updates.
+            "org.bytedeco:openblas:0.3.30-1.5.12", // A dependency of smile. Update it as smile updates.
+            "org.bytedeco:arpack-ng:3.9.1-1.5.12", // A dependency of smile. Update it as smile updates.
+            "org.duckdb:duckdb_jdbc:1.3.2.0", // A dependency of smile. Update it as smile updates.
+            "com.google.guava:guava:32.1.2-jre", // A dependency of FORY. Update it as FORY updates.
             // End: Extra items because Libby is a pile of trash and does not resolve dependencies of dependencies section
     };
 
