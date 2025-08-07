@@ -54,8 +54,8 @@ public class InvalidUseActionsCheck extends Check {
                 WrapperPlayClientPlayerDigging diggingWrapper = new WrapperPlayClientPlayerDigging(event);
                 if (diggingWrapper.getAction() != DiggingAction.RELEASE_USE_ITEM) return;
 
-                if (blocking && attacked) fail("atk");
-                else if (blocking && placed) fail("plc");
+                if (blocking && attacked) fail("atk, act: " + diggingWrapper.getAction());
+                else if (blocking && placed) fail("plc, act: " + diggingWrapper.getAction());
                 blocking = attacked = placed = false;
 
                 break;
