@@ -1,9 +1,7 @@
 package better.anticheat.core.util.ml;
 
 import better.anticheat.core.util.MathUtil;
-import com.alibaba.fastjson2.JSON;
-import com.alibaba.fastjson2.JSONArray;
-import com.github.luben.zstd.Zstd;
+
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import smile.base.cart.SplitRule;
@@ -16,9 +14,8 @@ import smile.data.type.StructField;
 import smile.data.type.StructType;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
+
+
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -343,21 +340,29 @@ public class MLTrainer {
     ) throws IOException {
         List<double[][][]> legitDataList = new ArrayList<>();
         for (String name : legitDatasetNames) {
-            double[][][] data = loadData(name, dataDirectory);
-            if (data != null) {
-                legitDataList.add(data);
-            } else {
-                log.error("[BetterAnticheat] Failed to load ML data from file {} (legit split), please check your ML configuration.", name);
+            try {
+                double[][][] data = RecordingUtil.loadData(name, dataDirectory);
+                if (data != null) {
+                    legitDataList.add(data);
+                } else {
+                    log.error("[BetterAnticheat] Failed to load ML data from file {} (legit split), please check your ML configuration.", name);
+                }
+            } catch (IOException e) {
+                log.error("Failed to load legitimate dataset: {}", name, e);
             }
         }
 
         List<double[][][]> cheatingDataList = new ArrayList<>();
         for (String name : cheatingDatasetNames) {
-            double[][][] data = loadData(name, dataDirectory);
-            if (data != null) {
-                cheatingDataList.add(data);
-            } else {
-                log.error("[BetterAnticheat] Failed to load ML data from file {} (cheating split), please check your ML configuration.", name);
+            try {
+                double[][][] data = RecordingUtil.loadData(name, dataDirectory);
+                if (data != null) {
+                    cheatingDataList.add(data);
+                } else {
+                    log.error("[BetterAnticheat] Failed to load ML data from file {} (cheating split), please check your ML configuration.", name);
+                }
+            } catch (IOException e) {
+                log.error("Failed to load cheating dataset: {}", name, e);
             }
         }
 
@@ -433,76 +438,5 @@ public class MLTrainer {
         }
 
         return new double[][][]{combinedYaws, combinedOffsets, combinedEnhancedOffsets};
-    }
-
-    private static double[][][] loadData(String fileName, Path dataDirectory) throws IOException {
-        String resourceName = fileName + ".json";
-        String compressedResourceName = fileName + ".json.zst";
-        InputStream resourceStream = MLTrainer.class.getClassLoader().getResourceAsStream(resourceName);
-        InputStream compressedResourceStream = MLTrainer.class.getClassLoader().getResourceAsStream(compressedResourceName);
-
-        if (compressedResourceStream != null) {
-            log.debug("Loading compressed data from resource: {}", compressedResourceName);
-            try (InputStream stream = compressedResourceStream) {
-                byte[] compressedData = stream.readAllBytes();
-                byte[] jsonData = Zstd.decompress(compressedData, (int) Zstd.decompressedSize(compressedData));
-                return readData(jsonData);
-            }
-        } else if (resourceStream != null) {
-            log.debug("Loading data from resource: {}", resourceName);
-            try (InputStream stream = resourceStream) {
-                byte[] jsonData = stream.readAllBytes();
-                return readData(jsonData);
-            }
-        } else {
-            log.debug("Resource '{}' not found, trying local file system.", resourceName);
-            final var recordingDirectory = dataDirectory.resolve("recording");
-            if (!recordingDirectory.toFile().exists()) {
-                recordingDirectory.toFile().mkdirs();
-            }
-            final var file = recordingDirectory.resolve(resourceName);
-            if (!file.toFile().exists()) {
-                return null;
-            }
-            byte[] jsonData = Files.readAllBytes(file);
-            return readData(jsonData);
-        }
-    }
-
-    private static double[][][] readData(byte[] jsonData) {
-        final var root = JSON.parseObject(new String(jsonData, StandardCharsets.UTF_16LE));
-        JSONArray yawsArrays = root.getJSONArray("yaws");
-        JSONArray offsetsArrays = root.getJSONArray("offsets");
-        JSONArray enhancedOffsetsArrays = root.getJSONArray("enhancedOffsets");
-
-        double[][] yaws = new double[yawsArrays.size()][];
-        double[][] offsets = new double[offsetsArrays.size()][];
-        double[][] enhancedOffsets = new double[enhancedOffsetsArrays.size()][];
-
-        for (int i = 0; i < yawsArrays.size(); i++) {
-            JSONArray yawsArray = (JSONArray) yawsArrays.get(i);
-            yaws[i] = new double[yawsArray.size()];
-            for (int j = 0; j < yawsArray.size(); j++) {
-                yaws[i][j] = yawsArray.getDoubleValue(j);
-            }
-        }
-
-        for (int i = 0; i < offsetsArrays.size(); i++) {
-            JSONArray offsetsArray = (JSONArray) offsetsArrays.get(i);
-            offsets[i] = new double[offsetsArray.size()];
-            for (int j = 0; j < offsetsArray.size(); j++) {
-                offsets[i][j] = offsetsArray.getDoubleValue(j);
-            }
-        }
-
-        for (int i = 0; i < enhancedOffsetsArrays.size(); i++) {
-            JSONArray enhancedOffsetsArray = (JSONArray) enhancedOffsetsArrays.get(i);
-            enhancedOffsets[i] = new double[enhancedOffsetsArray.size()];
-            for (int j = 0; j < enhancedOffsetsArray.size(); j++) {
-                enhancedOffsets[i][j] = enhancedOffsetsArray.getDoubleValue(j);
-            }
-        }
-
-        return new double[][][]{yaws, offsets, enhancedOffsets};
     }
 }

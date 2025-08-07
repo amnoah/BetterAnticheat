@@ -13,6 +13,7 @@ import lombok.Setter;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
+import org.apache.fory.ThreadSafeFory;
 import wtf.spare.sparej.fastlist.FastObjectArrayList;
 
 import java.security.InvalidParameterException;
@@ -55,6 +56,22 @@ public abstract class Check implements Cloneable {
     private int vl = 0;
     private long lastAlertMS = 0;
     private long lastVerboseMS = 0;
+
+
+    /**
+     * Construct the check via info provided in CheckInfo annotation.
+     * This is the recommended approach but requires a @CheckInfo annotation on implementations.
+     */
+    public Check() {
+        CheckInfo info = this.getClass().getAnnotation(CheckInfo.class);
+        if (info == null) throw new InvalidParameterException("No CheckInfo annotation on class: " + this.getClass().getName() + "!");
+
+        // Copy values from annotation.
+        name = info.name();
+        category = info.category();
+        config = info.config();
+        experimental = info.experimental();
+    }
 
     /**
      * Construct the check via info provided in CheckInfo annotation.
@@ -100,8 +117,15 @@ public abstract class Check implements Cloneable {
         vl = reference.vl;
     }
 
-    public Check initialCopy(Player player) {
-        Check check = clone();
+    public synchronized Check initialCopy(final Player player, final ThreadSafeFory copier) {
+        final var plugin = this.plugin;
+        this.plugin = null;
+
+        final var check = copier.copy(this);
+
+        this.plugin = plugin;
+        check.plugin = plugin;
+
         check.reference = this;
         check.player = player;
         check.load();

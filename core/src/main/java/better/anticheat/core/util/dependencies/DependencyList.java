@@ -13,9 +13,10 @@ public class DependencyList {
             "io.github.revxrsal:lamp.brigadier:4.0.0-rc.12",
             "io.github.revxrsal:lamp.common:4.0.0-rc.12",
             "com.github.haifengl:smile-core:4.4.0",
-            "com.github.haifengl:smile-base:4.4.0",
             "com.github.haifengl:smile-plot:4.4.0",
             "com.github.luben:zstd-jni:1.5.6-7",
+            "com.alibaba.fastjson2:fastjson2:2.0.57",
+            "org.apache.fory:fory-core:0.11.2",
             // Start: Extra items because Libby is a pile of trash and does not resolve dependencies of dependencies section
             "com.github.haifengl:smile-base:4.4.0",
             "org.apache.commons:commons-csv:1.14.0",
@@ -23,7 +24,6 @@ public class DependencyList {
             "org.bytedeco:openblas:0.3.30-1.5.12",
             "org.bytedeco:arpack-ng:3.9.1-1.5.12",
             "org.duckdb:duckdb_jdbc:1.3.2.0",
-            "com.alibaba.fastjson2:fastjson2:2.0.57",
             // End: Extra items because Libby is a pile of trash and does not resolve dependencies of dependencies section
     };
 

@@ -22,13 +22,18 @@ import better.anticheat.core.check.impl.place.PlaceBlockFacePositionCheck;
 import better.anticheat.core.configuration.ConfigSection;
 import better.anticheat.core.configuration.ConfigurationFile;
 import better.anticheat.core.player.Player;
+import org.apache.fory.Fory;
+import org.apache.fory.ThreadSafeFory;
+import org.apache.fory.logging.LoggerFactory;
 
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 public class CheckManager {
 
     private final BetterAnticheat plugin;
     private final List<Check> checks;
+    private final ThreadSafeFory copier;
 
     public CheckManager(BetterAnticheat plugin) {
         this.plugin = plugin;
@@ -87,6 +92,22 @@ public class CheckManager {
                 new CursorPositionCheck(plugin),
                 new PlaceBlockFacePositionCheck(plugin)
         );
+
+        LoggerFactory.disableLogging();
+        // One instance handles 99% of scenarios very well.
+        // In case of a temporary increase, we allow it to scale up to four instances.
+        // Only delete after 1h as it loses its JIT state when it is deleted.
+        this.copier = Fory
+                .builder()
+                .withRefCopy(true)
+                .requireClassRegistration(false)
+                .suppressClassRegistrationWarnings(true)
+                .withAsyncCompilation(true)
+                .withCodegen(true)
+                .buildThreadSafeForyPool(1, 4, 1, TimeUnit.HOURS);
+        LoggerFactory.enableLogging();
+        LoggerFactory.useSlf4jLogging(true);
+        LoggerFactory.setLogLevel(0); // Errors only
     }
 
     public Collection<Check> getAllChecks() {
@@ -100,7 +121,7 @@ public class CheckManager {
          * The advantage of this method is also that cloning does not call the constructor, meaning that only the
          * original copies present in the CHECKS list will be reloaded.
          */
-        List<Check> returnList = new ArrayList<>();
+        final List<Check> returnList = new ArrayList<>();
         for (Check check : checks) {
             // Filter by feature requirements, if any
             final var info = check.getClass().getAnnotation(CheckInfo.class);
@@ -115,7 +136,8 @@ public class CheckManager {
                 }
                 if (!ok) continue;
             }
-            returnList.add(check.initialCopy(player));
+            // Add the check to the player's check list
+            returnList.add(check.initialCopy(player, copier));
         }
 
         return returnList;

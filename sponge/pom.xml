@@ -129,6 +129,12 @@
             <artifactId>sparej</artifactId>
             <scope>compile</scope>
         </dependency>
+
+        <dependency>
+            <groupId>org.apache.fory</groupId>
+            <artifactId>fory-core</artifactId>
+            <scope>compile</scope>
+        </dependency>
     </dependencies>
 
     <build>

@@ -42,17 +42,19 @@ import java.util.List;
 @Slf4j
 public class EntityTracker extends Tracker {
     public EntityTracker(final Player player, final ConfirmationTracker confirmationTracker,
-            final PositionTracker positionTracker, final DataBridge<?> bridge) {
+                         final PositionTracker positionTracker, final DataBridge<?> bridge) {
         super(player);
         this.confirmationTracker = confirmationTracker;
         this.positionTracker = positionTracker;
         this.bridge = bridge;
         this.supportsTickEnd = getPlayer().getUser().getClientVersion()
                 .isNewerThanOrEquals(ClientVersion.V_1_21_2);
+        this.plugin = player.getPlugin();
     }
 
     // General data
     private final boolean supportsTickEnd;
+    private final BetterAnticheat plugin;
 
     // Persistent data
     @Getter
@@ -173,7 +175,7 @@ public class EntityTracker extends Tracker {
      * Creates an entity
      */
     public void createEntity(final int entityId, final @NotNull Vector3d position, final @NotNull EntityType type,
-            final int retries) {
+                             final int retries) {
         if (this.entities.containsKey(entityId)) {
             // Prevent performance issues.
             if (retries < 10) {
@@ -316,24 +318,33 @@ public class EntityTracker extends Tracker {
                     || Math.abs(state.getPosZ() - state.getData().getServerPosZ().getCurrent()) > 0.005;
 
             if (shouldClone) {
-                // Clone first - the children will be cloned themselves. This improves
-                // performance a little.
-                final var neww = state.newChild(state, false, false);
+                // Use fast awaiting powered tracking here instead if possible.
+                if (this.plugin.isEntityTrackerFastAwaitingUpdate()
+                        && state.getOtherPlayerMPPosRotationIncrements() <= 0) {
+                    final var childDepth = depth + 1;
+                    for (final var child : state.getChildren()) {
+                        recursivelyRelMovePre(child, childDepth);
+                    }
+                    return;
+                } else {
+                    // Clone first - the children will be cloned themselves. This improves performance a little.
+                    final var neww = state.newChild(state, false, false);
 
-                // Recursively run
-                final var childDepth = depth + 1;
-                for (final var child : state.getChildren()) {
-                    stateBuffer2.add(child);
-                    recursivelyRelMovePre(child, childDepth);
+                    // Recursively run
+                    final var childDepth = depth + 1;
+                    for (final var child : state.getChildren()) {
+                        stateBuffer2.add(child);
+                        recursivelyRelMovePre(child, childDepth);
+                    }
+
+                    // Add the clone after doing recursion to avoid accidentally setting the pos on
+                    // the old entity state.
+                    state.getData().getTreeSize().increment(1);
+                    state.getChildren().add(neww);
+
+                    // Tick this on post instead.
+                    this.stateBuffer.add(neww);
                 }
-
-                // Add the clone after doing recursion to avoid accidentally setting the pos on
-                // the old entity state.
-                state.getData().getTreeSize().increment(1);
-                state.getChildren().add(neww);
-
-                // Tick this on post instead.
-                this.stateBuffer.add(neww);
             } else {
                 final var childDepth = depth + 1;
                 for (final var child : state.getChildren()) {
@@ -412,9 +423,10 @@ public class EntityTracker extends Tracker {
      */
     public void onLivingUpdate() {
         // Handle splits
-        if (BetterAnticheat.getInstance().isEntityTrackerFastAwaitingUpdate()) {
+        if (this.plugin.isEntityTrackerFastAwaitingUpdate()) {
+            // This is an optimistic, lightweight estimation based split handling algorithm
             for (final var awaitingUpdate : this.awaitingUpdates) {
-                if (awaitingUpdate.getFlyings().increment() < 1 || awaitingUpdate.getFlyings().get() > 3) {
+                if (awaitingUpdate.getFlyings().get() > 3) {
                     continue;
                 }
                 final var oldState = awaitingUpdate.getOldState();
@@ -430,7 +442,7 @@ public class EntityTracker extends Tracker {
         } else {
             for (final var awaitingUpdate : this.awaitingUpdates) {
                 // Max of 3 updates.
-                if (awaitingUpdate.getFlyings().increment() < 1 || awaitingUpdate.getFlyings().get() > 3) {
+                if (awaitingUpdate.getFlyings().increment() < 2 || awaitingUpdate.getFlyings().get() > 5) {
                     continue;
                 }
                 final var newUpdate = awaitingUpdate.getOldState().newChild(awaitingUpdate.getData().getRootState(),
@@ -464,14 +476,14 @@ public class EntityTracker extends Tracker {
      */
     public synchronized void shakeTree(final @NotNull EntityData entityData) {
         try {
-            if (entityData.getTreeSize().get() >= 20) {
+            if (entityData.getTreeSize().get() >= (this.plugin.isEntityTrackerFastAwaitingUpdate() ? 28 : 20)) {
                 fullSizeTreeShakeTimer.increment();
             }
 
             if (fullSizeTreeShakeTimer.get() % 40.0 == 0.0) {
                 // Get rid of not very useful data, and do emergency cleanup if >> 180
                 final var treeSize = entityData.getTreeSize().get();
-                final var maxDelta = treeSize > 90 ? 0.12 : treeSize > 60 ? 0.03 : treeSize > 30 ? 0.025 : 0.015;
+                final var maxDelta = treeSize > 90 ? 0.12 : treeSize > 60 ? 0.03 : treeSize > 32 ? 0.025 : 0.015;
 
                 shakeTreeRecursive(entityData.getRootState(), (state) -> {
                     var statee = (EntityTrackerState) state;
@@ -515,12 +527,12 @@ public class EntityTracker extends Tracker {
      * Create the bounding box for an entity
      */
     public @NotNull AxisAlignedBB createEntityBox(final float width, final float height,
-            final @NotNull Vector3d vector3d) {
+                                                  final @NotNull Vector3d vector3d) {
         return new AxisAlignedBB(vector3d.getX(), vector3d.getY(), vector3d.getZ(), width, height);
     }
 
     public @NotNull List<EntityData> getEntitiesWithinAABBExcludingEntity(final int entityId,
-            final @NotNull AxisAlignedBB bb) {
+                                                                          final @NotNull AxisAlignedBB bb) {
         final var entities = new ArrayList<EntityData>();
         for (final var value : this.entities.values()) {
             if (value.getId() == entityId) {
@@ -571,7 +583,7 @@ public class EntityTracker extends Tracker {
     }
 
     private void setPositionAndRotation2(final EntityTrackerState state, final double x, final double y,
-            final double z) {
+                                         final double z) {
         state.setOtherPlayerMPX(x);
         state.setOtherPlayerMPY(y);
         state.setOtherPlayerMPZ(z);
@@ -668,7 +680,7 @@ public class EntityTracker extends Tracker {
      * Runs the actual logic for tree shaking.
      */
     private void shakeTreeRecursive(final EntityTrackerState entityTrackerState,
-            final Object2BooleanFunction<EntityTrackerState> shouldDelete) {
+                                    final Object2BooleanFunction<EntityTrackerState> shouldDelete) {
         stateBuffer.clear(); // Flush old buffers.
 
         // Remove duplicated entries, and copy their children to the parent (current) node.

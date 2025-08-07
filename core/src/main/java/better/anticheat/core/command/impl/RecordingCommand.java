@@ -5,21 +5,16 @@ import better.anticheat.core.command.Command;
 import better.anticheat.core.command.CommandInfo;
 import better.anticheat.core.configuration.ConfigSection;
 import better.anticheat.core.util.MathUtil;
+import better.anticheat.core.util.ml.RecordingUtil;
 import better.anticheat.core.util.ml.MLTrainer;
 import better.anticheat.core.util.ml.RecordingSaver;
 import com.alibaba.fastjson2.JSON;
-import com.alibaba.fastjson2.JSONArray;
-import com.alibaba.fastjson2.JSONException;
 import com.alibaba.fastjson2.JSONObject;
 import com.github.luben.zstd.Zstd;
 import lombok.extern.slf4j.Slf4j;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextColor;
-import org.jetbrains.annotations.Nullable;
-import revxrsal.commands.annotation.Default;
-import revxrsal.commands.annotation.Optional;
-import revxrsal.commands.annotation.Range;
-import revxrsal.commands.annotation.Subcommand;
+import revxrsal.commands.annotation.*;
 import revxrsal.commands.command.CommandActor;
 import smile.classification.Classifier;
 import smile.data.Tuple;
@@ -136,38 +131,30 @@ public class RecordingCommand extends Command {
         if (!hasPermission(actor))
             return;
 
-        final var json1 = loadRecordingJson(source1);
-        if (json1 == null) {
+        final var data1 = RecordingUtil.loadData(source1, plugin.getDirectory());
+        if (data1 == null) {
             sendReply(actor, Component.text("Could not load source recording: " + source1));
             return;
         }
 
-        final var json2 = loadRecordingJson(source2);
-        if (json2 == null) {
+        final var data2 = RecordingUtil.loadData(source2, plugin.getDirectory());
+        if (data2 == null) {
             sendReply(actor, Component.text("Could not load source recording: " + source2));
             return;
         }
 
-        final var yaws1 = json1.getJSONArray("yaws");
-        final var offsets1 = json1.getJSONArray("offsets");
-        final var enhancedOffsets1 = json1.getJSONArray("enhancedOffsets");
-
-        final var yaws2 = json2.getJSONArray("yaws");
-        final var offsets2 = json2.getJSONArray("offsets");
-        final var enhancedOffsets2 = json2.getJSONArray("enhancedOffsets");
-
-        yaws1.addAll(yaws2);
-        offsets1.addAll(offsets2);
-        enhancedOffsets1.addAll(enhancedOffsets2);
+        double[][] mergedYaws = mergeArrays(data1[0], data2[0]);
+        double[][] mergedOffsets = mergeArrays(data1[1], data2[1]);
+        double[][] mergedEnhancedOffsets = mergeArrays(data1[2], data2[2]);
 
         final JSONObject mergedJson = new JSONObject();
-        mergedJson.put("yaws", yaws1);
-        mergedJson.put("offsets", offsets1);
-        mergedJson.put("enhancedOffsets", enhancedOffsets1);
+        mergedJson.put("yaws", mergedYaws);
+        mergedJson.put("offsets", mergedOffsets);
+        mergedJson.put("enhancedOffsets", mergedEnhancedOffsets);
 
         final var recordingDirectory = plugin.getDirectory().resolve("recording");
-        if (!recordingDirectory.toFile().exists()) {
-            recordingDirectory.toFile().mkdirs();
+        if (!Files.exists(recordingDirectory)) {
+            Files.createDirectories(recordingDirectory);
         }
 
         Files.writeString(recordingDirectory.resolve(dest + ".json"), JSON.toJSONString(mergedJson),
@@ -183,8 +170,8 @@ public class RecordingCommand extends Command {
             return;
 
         final var recordingDirectory = plugin.getDirectory().resolve("recording");
-        if (!recordingDirectory.toFile().exists()) {
-            recordingDirectory.toFile().mkdirs();
+        if (!Files.exists(recordingDirectory)) {
+            Files.createDirectories(recordingDirectory);
         }
 
         final var subfolder = recordingDirectory.resolve(folderName);
@@ -193,59 +180,57 @@ public class RecordingCommand extends Command {
             return;
         }
 
-        // List all JSON files in the subfolder
-        final var files = subfolder.toFile().listFiles((dir, name) -> name.endsWith(".json"));
+        final var files = subfolder.toFile().listFiles((dir, name) -> name.endsWith(".json") || name.endsWith(".json.zst"));
         if (files == null || files.length == 0) {
-            sendReply(actor, Component.text("No JSON files found in subfolder '" + folderName + "'."));
+            sendReply(actor, Component.text("No recording files found in subfolder '" + folderName + "'."));
             return;
         }
 
-        JSONArray mergedYaws = null;
-        JSONArray mergedOffsets = null;
-        JSONArray mergedEnhancedOffsets = null;
-
-        int mergedCount = 0;
+        List<double[][][]> allData = new ArrayList<>();
         for (final var file : files) {
-            final var fileName = file.getName().substring(0, file.getName().length() - 5); // Remove .json extension
-            final var json = loadRecordingJson(folderName + "/" + fileName);
-            if (json == null) {
-                sendReply(actor, Component.text("Warning: Could not load recording: " + fileName + " (skipping)"));
+            String fileName = file.getName();
+            if (fileName.endsWith(".zst")) {
+                fileName = fileName.substring(0, fileName.length() - 4);
+            }
+            if (fileName.endsWith(".json")) {
+                fileName = fileName.substring(0, fileName.length() - 5);
+            }
+
+            final var data = RecordingUtil.loadData(folderName + "/" + fileName, plugin.getDirectory());
+            if (data == null) {
+                sendReply(actor, Component.text("Warning: Could not load recording: " + file.getName() + " (skipping)"));
                 continue;
             }
-
-            if (mergedYaws == null) {
-                // Initialize with first file's data
-                mergedYaws = json.getJSONArray("yaws");
-                mergedOffsets = json.getJSONArray("offsets");
-                mergedEnhancedOffsets = json.getJSONArray("enhancedOffsets");
-            } else {
-                // Merge with existing data
-                mergedYaws.addAll(json.getJSONArray("yaws"));
-                mergedOffsets.addAll(json.getJSONArray("offsets"));
-                mergedEnhancedOffsets.addAll(json.getJSONArray("enhancedOffsets"));
-            }
-            mergedCount++;
+            allData.add(data);
         }
 
-        if (mergedCount == 0) {
+        if (allData.isEmpty()) {
             sendReply(actor, Component.text("No recordings could be loaded from subfolder '" + folderName + "'."));
             return;
         }
 
+        double[][][] mergedData = allData.get(0);
+        for (int i = 1; i < allData.size(); i++) {
+            double[][][] currentData = allData.get(i);
+            mergedData[0] = mergeArrays(mergedData[0], currentData[0]);
+            mergedData[1] = mergeArrays(mergedData[1], currentData[1]);
+            mergedData[2] = mergeArrays(mergedData[2], currentData[2]);
+        }
+
         final JSONObject mergedJson = new JSONObject();
-        mergedJson.put("yaws", mergedYaws);
-        mergedJson.put("offsets", mergedOffsets);
-        mergedJson.put("enhancedOffsets", mergedEnhancedOffsets);
+        mergedJson.put("yaws", mergedData[0]);
+        mergedJson.put("offsets", mergedData[1]);
+        mergedJson.put("enhancedOffsets", mergedData[2]);
 
         Files.writeString(recordingDirectory.resolve(dest + ".json"), JSON.toJSONString(mergedJson),
                 StandardCharsets.UTF_16LE);
 
         sendReply(actor, Component
-                .text("Merged " + mergedCount + " recordings from folder '" + folderName + "' into '" + dest + "'"));
+                .text("Merged " + allData.size() + " recordings from folder '" + folderName + "' into '" + dest + "'"));
     }
 
     @Subcommand("export")
-    public void recordingExport(final CommandActor actor, final String source, @Optional String dest)
+    public void recordingExport(final CommandActor actor, final String source, @Optional String dest, @Optional @Values({"smalljson", "binary"}) @Default("binary") final String format)
             throws IOException {
         if (!hasPermission(actor))
             return;
@@ -254,24 +239,39 @@ public class RecordingCommand extends Command {
             dest = source;
         }
 
-        final var sourceJson = loadRecordingJson(source);
-        if (sourceJson == null) {
+        final var sourceData = RecordingUtil.loadData(source, plugin.getDirectory());
+        if (sourceData == null) {
             sendReply(actor, Component.text("Could not load source recording: " + source));
             return;
         }
 
         final var exportDirectory = plugin.getDirectory().resolve("export");
-        if (!exportDirectory.toFile().exists()) {
-            exportDirectory.toFile().mkdirs();
+        if (!Files.exists(exportDirectory)) {
+            Files.createDirectories(exportDirectory);
         }
 
-        // Convert JSON to string and compress with zstd
-        final String jsonString = JSON.toJSONString(sourceJson);
-        final byte[] jsonBytes = jsonString.getBytes(StandardCharsets.UTF_16LE);
-        final byte[] compressedBytes = Zstd.compress(jsonBytes, 22);
+        final byte[] compressedBytes = switch (format) {
+            case "smalljson" -> {
+                final var sourceJson = new JSONObject();
+                sourceJson.put("yaws", sourceData[0]);
+                sourceJson.put("offsets", sourceData[1]);
+                sourceJson.put("enhancedOffsets", sourceData[2]);
 
-        // Write compressed data to export directory
-        Files.write(exportDirectory.resolve(dest + ".json.zst"), compressedBytes);
+                final String jsonString = JSON.toJSONString(sourceJson);
+                final byte[] jsonBytes = jsonString.getBytes(StandardCharsets.UTF_16LE);
+                yield Zstd.compress(jsonBytes, 22);
+            }
+            case "binary" -> RecordingUtil.createSmallRecording(sourceData);
+            default -> throw new IllegalStateException("Unexpected value: " + format);
+        };
+
+        final String extension = switch (format) {
+            case "smalljson" -> ".json.zst";
+            case "binary" -> ".brecord";
+            default -> throw new IllegalStateException("Unexpected value: " + format);
+        };
+
+        Files.write(exportDirectory.resolve(dest + extension), compressedBytes);
 
         sendReply(actor, Component.text("Exported " + source + " to compressed file " + dest + ".json.zst"));
     }
@@ -281,13 +281,13 @@ public class RecordingCommand extends Command {
             final String legit, final String cheating,
             final @Optional @Default("false") boolean randomForests,
             final @Optional @Default("false") boolean statistics) throws IOException {
-        final var legitData = loadData(legit);
+        final var legitData = RecordingUtil.loadData(legit, plugin.getDirectory());
         if (legitData == null) {
             sendReply(actor, Component.text("Failed to load data for " + legit));
             return;
         }
 
-        final var cheatingData = loadData(cheating);
+        final var cheatingData = RecordingUtil.loadData(cheating, plugin.getDirectory());
         if (cheatingData == null) {
             sendReply(actor, Component.text("Failed to load data for " + cheating));
             return;
@@ -298,7 +298,6 @@ public class RecordingCommand extends Command {
             actor.reply("Format: MaxDepth,NodeSize -> Accuracy%");
             actor.reply("");
 
-            // Test different depth and node size configurations
             int[] depths = { 10, 15, 20, 25, 30, 35, 40, 45, 50, 60, 70, 80, 90 };
             int[] nodeSizes = { 2, 3, 4, 5, 6, 8, 10 };
 
@@ -358,7 +357,7 @@ public class RecordingCommand extends Command {
     @Subcommand("validate")
     public void recordingValidate(final CommandActor actor, final String legit,
             @Range(min = 0, max = 2) final short column, final List<String> cheating) throws IOException {
-        final var legitData = loadData(legit);
+        final var legitData = RecordingUtil.loadData(legit, plugin.getDirectory());
         if (legitData == null) {
             sendReply(actor, Component.text("Failed to load data for " + legit));
             return;
@@ -366,7 +365,7 @@ public class RecordingCommand extends Command {
 
         final var cheatingDataList = new ArrayList<double[][][]>();
         for (final var cheatSet : cheating) {
-            final var data = loadData(cheatSet);
+            final var data = RecordingUtil.loadData(cheatSet, plugin.getDirectory());
             if (data == null) {
                 sendReply(actor, Component.text("Failed to load data for " + cheatSet));
                 return;
@@ -374,43 +373,26 @@ public class RecordingCommand extends Command {
             cheatingDataList.add(data);
         }
 
-        // Combine cheating data
-        int totalYaws = 0;
-        int totalOffsets = 0;
-        int totalEnhancedOffsets = 0;
-
-        for (double[][][] data : cheatingDataList) {
-            totalYaws += data[0].length;
-            totalOffsets += data[1].length;
-            totalEnhancedOffsets += data[2].length;
+        if (cheatingDataList.isEmpty()) {
+            sendReply(actor, Component.text("No cheating data could be loaded."));
+            return;
         }
 
-        double[][] combinedYaws = new double[totalYaws][];
-        double[][] combinedOffsets = new double[totalOffsets][];
-        double[][] combinedEnhancedOffsets = new double[totalEnhancedOffsets][];
-
-        int yawsIndex = 0;
-        int offsetsIndex = 0;
-        int enhancedOffsetsIndex = 0;
-
-        for (double[][][] data : cheatingDataList) {
-            System.arraycopy(data[0], 0, combinedYaws, yawsIndex, data[0].length);
-            yawsIndex += data[0].length;
-            System.arraycopy(data[1], 0, combinedOffsets, offsetsIndex, data[1].length);
-            offsetsIndex += data[1].length;
-            System.arraycopy(data[2], 0, combinedEnhancedOffsets, enhancedOffsetsIndex, data[2].length);
-            enhancedOffsetsIndex += data[2].length;
+        double[][][] combinedCheatingData = cheatingDataList.get(0);
+        for (int i = 1; i < cheatingDataList.size(); i++) {
+            double[][][] currentData = cheatingDataList.get(i);
+            combinedCheatingData[0] = mergeArrays(combinedCheatingData[0], currentData[0]);
+            combinedCheatingData[1] = mergeArrays(combinedCheatingData[1], currentData[1]);
+            combinedCheatingData[2] = mergeArrays(combinedCheatingData[2], currentData[2]);
         }
-
-        final double[][][] finalCheatingData = new double[][][] { combinedYaws, combinedOffsets,
-                combinedEnhancedOffsets };
 
         ForkJoinPool.commonPool().execute(() -> {
-            actor.reply("--- RAW DATA: ");
-            runTrainerTests(legitData, finalCheatingData, actor, column, false, false);
-
-            actor.reply("--- PROCESSED DATA: ");
-            runTrainerTests(legitData, finalCheatingData, actor, column, true, true);
+            try {
+                runTrainerTests(legitData, combinedCheatingData, actor, column, false, true);
+            } catch (Throwable t) {
+                log.error("Error during recordingValidate execution", t);
+                actor.reply("Error during validation: " + t.getClass().getSimpleName() + " - " + t.getMessage());
+            }
         });
     }
 
@@ -425,19 +407,19 @@ public class RecordingCommand extends Command {
         if (!hasPermission(actor))
             return;
 
-        final var legitData = loadData(legit);
+        final var legitData = RecordingUtil.loadData(legit, plugin.getDirectory());
         if (legitData == null) {
             sendReply(actor, Component.text("Failed to load data for " + legit));
             return;
         }
 
-        final var cheatingData = loadData(cheating);
+        final var cheatingData = RecordingUtil.loadData(cheating, plugin.getDirectory());
         if (cheatingData == null) {
             sendReply(actor, Component.text("Failed to load data for " + cheating));
             return;
         }
 
-        final var candidateData = loadData(candidate);
+        final var candidateData = RecordingUtil.loadData(candidate, plugin.getDirectory());
         if (candidateData == null) {
             sendReply(actor, Component.text("Failed to load data for " + candidate));
             return;
@@ -447,11 +429,9 @@ public class RecordingCommand extends Command {
             try {
                 final MLTrainer trainer = new MLTrainer(legitData, cheatingData, column, false, statistics, processed);
 
-                // Select the correct struct size based on statistics flag
                 final StructType treeStructType = statistics ? MLTrainer.PREDICTION_STRUCT_XL
                         : MLTrainer.PREDICTION_STRUCT;
 
-                // Build list of models to evaluate
                 final List<String> modelTypes = new ArrayList<>();
                 modelTypes.add("gini_tree");
                 modelTypes.add("entropy_tree");
@@ -465,16 +445,14 @@ public class RecordingCommand extends Command {
                 int counted = 0;
 
                 for (String modelType : modelTypes) {
-                    Classifier<Tuple> model;
-                    switch (modelType) {
-                        case "gini_tree" -> model = trainer.getGiniTree();
-                        case "entropy_tree" -> model = trainer.getEntropyTree();
-                        case "gini_forest" -> model = trainer.getGiniForest();
-                        case "entropy_forest" -> model = trainer.getEntropyForest();
+                    Classifier<Tuple> model = switch (modelType) {
+                        case "gini_tree" -> trainer.getGiniTree();
+                        case "entropy_tree" -> trainer.getEntropyTree();
+                        case "gini_forest" -> trainer.getGiniForest();
+                        case "entropy_forest" -> trainer.getEntropyForest();
                         default -> throw new IllegalStateException("Unknown model type: " + modelType);
-                    }
+                    };
 
-                    // Collect candidate arrays using the selected slice
                     final double[][] candidateSlice = candidateData[column];
 
                     int asCheat = 0;
@@ -633,76 +611,6 @@ public class RecordingCommand extends Command {
                                 / ((legitData.length + finalCheatingData.length) * benchmarkRuns))));
     }
 
-    private @Nullable double[][][] loadData(final String name) throws IOException {
-        final var recordingDirectory = plugin.getDirectory().resolve("recording");
-        if (!recordingDirectory.toFile().exists()) {
-            recordingDirectory.toFile().mkdirs();
-        }
-        final var exists = recordingDirectory.resolve(name + ".json").toFile().exists();
-        if (!exists) {
-            return null;
-        }
-        final var bytes = Files.readAllBytes(recordingDirectory.resolve(name + ".json"));
-
-        return readData(bytes);
-    }
-
-    private @Nullable JSONObject loadRecordingJson(final String name) throws IOException {
-        final var recordingDirectory = plugin.getDirectory().resolve("recording");
-        if (!recordingDirectory.toFile().exists()) {
-            recordingDirectory.toFile().mkdirs();
-        }
-        final var file = recordingDirectory.resolve(name + ".json");
-        if (!file.toFile().exists()) {
-            return null;
-        }
-        final var bytes = Files.readAllBytes(file);
-        try {
-            return JSON.parseObject(new String(bytes, StandardCharsets.UTF_16LE));
-        } catch (JSONException e) {
-            return JSON.parseObject(new String(bytes, StandardCharsets.UTF_8));
-        }
-    }
-
-    private double[][][] readData(final byte[] bytes) {
-        final var json = JSON.parseObject(new String(bytes, StandardCharsets.UTF_16LE));
-        final var yawsArrays = json.getJSONArray("yaws");
-        final var offsetsArrays = json.getJSONArray("offsets");
-        final var enhancedOffsetsArrays = json.getJSONArray("enhancedOffsets");
-
-        // We need to return double[][][], where the first layer is
-        // yaws/offsets/enhancedOffsets, and the second layer is the pre-split arrays
-        final var yaws = new double[yawsArrays.size()][];
-        final var offsets = new double[offsetsArrays.size()][];
-        final var enhancedOffsets = new double[enhancedOffsetsArrays.size()][];
-
-        for (int i = 0; i < yawsArrays.size(); i++) {
-            final var yawsArray = (JSONArray) yawsArrays.get(i);
-            yaws[i] = new double[yawsArray.size()];
-            for (int j = 0; j < yawsArray.size(); j++) {
-                yaws[i][j] = yawsArray.getDoubleValue(j);
-            }
-        }
-
-        for (int i = 0; i < offsetsArrays.size(); i++) {
-            final var offsetsArray = (JSONArray) offsetsArrays.get(i);
-            offsets[i] = new double[offsetsArray.size()];
-            for (int j = 0; j < offsetsArray.size(); j++) {
-                offsets[i][j] = offsetsArray.getDoubleValue(j);
-            }
-        }
-
-        for (int i = 0; i < enhancedOffsetsArrays.size(); i++) {
-            final var enhancedOffsetsArray = (JSONArray) enhancedOffsetsArrays.get(i);
-            enhancedOffsets[i] = new double[enhancedOffsetsArray.size()];
-            for (int j = 0; j < enhancedOffsetsArray.size(); j++) {
-                enhancedOffsets[i][j] = enhancedOffsetsArray.getDoubleValue(j);
-            }
-        }
-
-        return new double[][][] { yaws, offsets, enhancedOffsets };
-    }
-
     private double testConfiguration(double[][][] legitData, double[][][] cheatingData, short column,
             int giniMaxDepth, int entropyMaxDepth, int giniNodeSize, int entropyNodeSize,
             int giniForestMaxDepth, int entropyForestMaxDepth, int giniForestNodeSize, int entropyForestNodeSize,
@@ -757,6 +665,13 @@ public class RecordingCommand extends Command {
             log.error("Error while testing configuration: ", e);
             return 0.0; // Return 0% accuracy if there's an error
         }
+    }
+
+    private double[][] mergeArrays(double[][] a, double[][] b) {
+        double[][] result = new double[a.length + b.length][];
+        System.arraycopy(a, 0, result, 0, a.length);
+        System.arraycopy(b, 0, result, a.length, b.length);
+        return result;
     }
 
     @Override
