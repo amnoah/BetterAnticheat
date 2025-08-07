@@ -248,7 +248,7 @@ combat-damage-mitigation:
   hit-cancellation-chance: 20.0
   # Multiplier for damage reduction calculation. Will reduce damage by reduction%.
   # Not supported on Sponge and Velocity.
-  damage-dealt-reduction: 40.0
+  damage-dealt-reduction: 50.0
   # Multiplier for knockback reduction calculation. Will reduce damage by reduction%.
   # Not supported on Sponge and Velocity.
   velocity-dealt-reduction: 40.0
