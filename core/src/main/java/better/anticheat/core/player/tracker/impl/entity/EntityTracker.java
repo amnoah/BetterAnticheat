@@ -116,6 +116,11 @@ public class EntityTracker extends Tracker {
                 this.handleMetadata(wrapper);
                 break;
             }
+            case DESTROY_ENTITIES: {
+                final var wrapper = new WrapperPlayServerDestroyEntities(event);
+                this.destroyEntities(wrapper.getEntityIds());
+                break;
+            }
             default:
                 break;
         }
@@ -169,6 +174,14 @@ public class EntityTracker extends Tracker {
 
     public void createEntity(final int entityId, final @NotNull Vector3d position, final @NotNull EntityType type) {
         this.createEntity(entityId, position, type, 0);
+    }
+
+    public void destroyEntities(final int[] entityId) {
+        this.confirmationTracker.confirm().onBegin(() -> {
+            for (final var id : entityId) {
+                entities.remove(id);
+            }
+        });
     }
 
     /**
@@ -661,20 +674,28 @@ public class EntityTracker extends Tracker {
             // Also remove children if it's ridiculous
             int childCount = 0;
             stateBuffer2.clear();
-            for (final var child : entityTrackerState.getChildren()) {
+            final var children = entityTrackerState.getChildren();
+            var childrenArray = children.getRawArray();
+            for (int i = 0; i < children.size(); i++) {
                 if (childCount++ > depth * 5) {
-                    stateBuffer2.add(child);
+                    final var child = childrenArray[i];
+                    stateBuffer2.add((EntityTrackerState) child);
                 }
             }
 
-            for (final var iEntityTrackerState : stateBuffer2) {
-                entityTrackerState.getChildren().remove(iEntityTrackerState);
+            final var state2Array = stateBuffer2.getRawArray();
+            for (int i = 0; i < stateBuffer2.size(); i++) {
+                final var state2 = state2Array[i];
+                children.removeExact(state2);
             }
 
             // Tree shrink shit
             final var childDepth = depth + 1;
-            for (final var child : entityTrackerState.getChildren()) {
-                treeShrinkRecursive(child, childDepth, maxDepth);
+
+            childrenArray = children.getRawArray();
+            for (int i = 0; i < children.size(); i++) {
+                final var child = childrenArray[i];
+                treeShrinkRecursive((EntityTrackerState) child, childDepth, maxDepth);
             }
         }
     }
