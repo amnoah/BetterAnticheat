@@ -16,6 +16,7 @@ import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientPl
 import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientPong;
 import com.github.retrooper.packetevents.wrapper.play.server.*;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import lombok.extern.slf4j.Slf4j;
 import net.kyori.adventure.text.Component;
 import org.jetbrains.annotations.NotNull;
@@ -26,15 +27,19 @@ import wtf.spare.sparej.fastlist.FastObjectArrayList;
 import wtf.spare.sparej.incrementer.IntIncrementer;
 import wtf.spare.sparej.incrementer.LongIncrementer;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Set;
+import java.lang.management.ManagementFactory;
+import java.util.*;
 
 @Slf4j
 public class ConfirmationTracker extends Tracker {
     public static final String COOKIE_KEY = "ad-tracking-id";
     public static final String COOKIE_NAMESPACE = "bac";
+
+    /**
+     * FastUtil linked hashsets seem to be faster than open hashsets when using G1 but not when using ZGC or PS.
+     * It is important to optimize around G1 as it is the default on Java 9-21+, and ObjOpLnHashSet is faster by a decent margin there.
+     */
+    public static final boolean USING_GOOD_GC = ManagementFactory.getGarbageCollectorMXBeans().stream().anyMatch((gc) -> gc.getName().toUpperCase(Locale.ENGLISH).contains("G1"));
     /**
      * Application hooks
      */
@@ -44,7 +49,7 @@ public class ConfirmationTracker extends Tracker {
      */
     private final Set<ConfirmationState> confirmations = Collections.synchronizedSet(
             // Default size is 16, so 32 is 2x the default, which is average of normal players and abusers.
-            new ObjectLinkedOpenHashSet<>(32)
+            USING_GOOD_GC ? new ObjectLinkedOpenHashSet<>(32) : new ObjectOpenHashSet<>(32)
     );
     /**
      * 30 seconds of recent confirmations, assuming one confirmation per tick, but it is usually less than this, meaning it can provide an even longer window
@@ -130,14 +135,10 @@ public class ConfirmationTracker extends Tracker {
                 }
                 break;
             }
-            case CLIENT_TICK_END: {
-                // no-op; end-of-tick cadence is handled uniformly after the switch
-                break;
-            }
             default:
                 break;
         }
-        
+
         // Packet counter cadence: increment on flying or CLIENT_TICK_END and run the old CLIENT_TICK_END logic on even counts.
         final var packetType = event.getPacketType();
         if (WrapperPlayClientPlayerFlying.isFlying(packetType)
@@ -147,7 +148,8 @@ public class ConfirmationTracker extends Tracker {
             if ((this.packetTickCounter % 2.0) == 0) {
                 final var currentTime = System.currentTimeMillis();
                 this.confirmations.removeIf(state -> {
-                    if (state.getTimestampConfirmed() == -1L && currentTime - state.getTimestamp() > 60000) {
+                    // 50 seconds
+                    if (state.getTimestampConfirmed() == -1L && currentTime - state.getTimestamp() > 50_000) {
                         event.getPostTasks().add(() -> {
                             synchronized (this.removedItemTaskQueue) {
                                 this.removedItemTaskQueue.addAll(state.getListeners());
@@ -161,6 +163,7 @@ public class ConfirmationTracker extends Tracker {
                         log.debug("[BetterAntiCheat] Timed out confirmation: {}", state);
                         return true;
                     }
+
                     return false;
                 });
 
@@ -179,12 +182,18 @@ public class ConfirmationTracker extends Tracker {
         // Log shit that has been sent
         switch (event.getPacketType()) {
             case PING: {
+                // Do not bother when Grim hook is being used, as this will not be useful then anyways.
+                if (this.dataBridge.getNativeConfirmationHandler() != null) break;
                 final var wrapper = new WrapperPlayServerPing(event);
                 confirmations.add(new ConfirmationState(wrapper.getId(), ConfirmationType.PINGPONG, System.currentTimeMillis(), false));
                 break;
             }
             case KEEP_ALIVE: {
                 final var wrapper = new WrapperPlayServerKeepAlive(event);
+                if (wrapper.getId() == keepAliveIncrementer.get()) {
+                    // These are already added as we sent them lol, no need to alloc again here.
+                    break;
+                }
                 confirmations.add(new ConfirmationState(wrapper.getId(), ConfirmationType.KEEPALIVE, System.currentTimeMillis(), false));
                 break;
             }

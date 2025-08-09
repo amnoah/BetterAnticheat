@@ -643,8 +643,11 @@ public class EntityTracker extends Tracker {
             state.setOtherPlayerMPPosRotationIncrements(-1);
         }
 
-        for (final var child : state.getChildren()) {
-            cnt += onLivingUpdateRecursive(child);
+        final var children = state.getChildren();
+        final var childrenArray = children.getRawArray();
+        for (int i = 0; i < children.size(); i++) {
+            final var child = childrenArray[i];
+            cnt += onLivingUpdateRecursive((EntityTrackerState) child);
         }
 
         return cnt;
