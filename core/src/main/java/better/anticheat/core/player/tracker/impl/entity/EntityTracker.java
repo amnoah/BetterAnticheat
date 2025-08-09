@@ -177,6 +177,7 @@ public class EntityTracker extends Tracker {
     }
 
     public void destroyEntities(final int[] entityId) {
+        // Not sure if I should be using after confirmation here
         this.confirmationTracker.confirm().onBegin(() -> {
             for (final var id : entityId) {
                 entities.remove(id);
