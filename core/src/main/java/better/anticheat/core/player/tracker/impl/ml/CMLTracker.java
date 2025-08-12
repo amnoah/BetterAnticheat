@@ -168,7 +168,6 @@ public class CMLTracker extends Tracker {
         private final ModelConfig modelConfig;
         @Getter
         private final OrderedArrayDoubleEvictingList history;
-        private final DecimalFormat df = new DecimalFormat("#.####");
 
         public MLCheck(final Player player, final ModelConfig modelConfig) {
             super(BetterAnticheat.getInstance(), "ML Aim: " + modelConfig.getDisplayName(), "", "", false);
@@ -211,7 +210,7 @@ public class CMLTracker extends Tracker {
             final var basicCheck = avg >= modelConfig.getAlertThreshold() + 0.5;
 
             if (basicCheck || extendedCheck) {
-                fail("ML " + df.format(avg) + " via " + this.history);
+                fail("ML " + MathUtil.DF_FOUR_PLACES.format(avg) + " via " + this.history);
                 this.player.getMitigationTracker().getMitigationTicks().increment(15);
                 return;
             }
@@ -224,13 +223,13 @@ public class CMLTracker extends Tracker {
             final var mitigationBasicCheck = avg >= modelConfig.getMitigationThreshold() + 0.5;
 
             if (mitigationExtendedCheck || mitigationBasicCheck) {
-                fail("ML " + df.format(avg) + " via " + this.history, true);
+                fail("ML " + MathUtil.DF_FOUR_PLACES.format(avg) + " via " + this.history, true);
                 this.player.getMitigationTracker().getMitigationTicks().increment(modelConfig.getMitigationTicks());
                 return;
             }
 
             log.debug("[BetterAnticheat] [ML] {} passed {} as {}", player.getUser().getName(), getName(),
-                    df.format(avg));
+                    MathUtil.DF_FOUR_PLACES.format(avg));
         }
     }
 }

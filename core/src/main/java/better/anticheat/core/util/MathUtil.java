@@ -4,6 +4,7 @@ import lombok.experimental.UtilityClass;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.text.DecimalFormat;
 import java.util.Arrays;
 
 /**
@@ -11,7 +12,9 @@ import java.util.Arrays;
  */
 @UtilityClass
 public class MathUtil {
-
+    public static final DecimalFormat DF_FOUR_PLACES = new DecimalFormat("#.####");
+    public static final DecimalFormat DF_SIX_PLACES = new DecimalFormat("#.######");
+    public static final DecimalFormat DF_EIGHT_PLACES = new DecimalFormat("#.########");
     public final double EXPANDER = Math.pow(2, 24);
 
     /**

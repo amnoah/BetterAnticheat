@@ -4,6 +4,7 @@ import better.anticheat.core.BetterAnticheat;
 import better.anticheat.core.check.Check;
 import better.anticheat.core.check.CheckInfo;
 import better.anticheat.core.check.ClientFeatureRequirement;
+import better.anticheat.core.util.MathUtil;
 import com.github.retrooper.packetevents.event.simple.PacketPlayReceiveEvent;
 import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientPlayerFlying;
 
@@ -51,7 +52,16 @@ public class CombatAccelerationCheck extends Check {
 
                 // Literally just a magic value. I'm not sure why it works so well, but it does.
                 final double accelLimit = (deltaYaw / deltaPitch / 2000);
-                if (accelerationXZ < accelLimit && deltaYaw > 15 && deltaPitch > 5 && ticksSinceAttack <= 2) fail();
+                if (accelerationXZ < accelLimit && deltaYaw > 15 && deltaPitch > 5 && ticksSinceAttack <= 2) {
+                    fail("accelXZ=" + MathUtil.DF_EIGHT_PLACES.format(accelerationXZ) + 
+                         " < accelLimit=" + MathUtil.DF_EIGHT_PLACES.format(accelLimit) + 
+                         " | deltaYaw=" + MathUtil.DF_FOUR_PLACES.format(deltaYaw) + 
+                         "° | deltaPitch=" + MathUtil.DF_FOUR_PLACES.format(deltaPitch) +
+                         "° | ticksSinceAttack=" + ticksSinceAttack + 
+                         " | deltaXZ=" + MathUtil.DF_SIX_PLACES.format(player.getPositionTracker().getDeltaXZ()) + 
+                         " | lastDeltaXZ=" + MathUtil.DF_SIX_PLACES.format(player.getPositionTracker().getLastDeltaXZ()) + 
+                         (player.getTeleportTracker().isTeleported() ? " | Teleported" : ""));
+                }
                 break;
             case INTERACT_ENTITY:
                 ticksSinceAttack = 0;
