@@ -2,7 +2,7 @@
 alert-cooldown: 1000
 # How much should we divide the alert cooldown by for verbose alerts?
 # If you keep alert cooldown at 1000ms, then verbose cooldown is the max amount of alerts per player per check per second.
-verbose-cooldown-divisor: 4
+verbose-cooldown-divisor: 4.0
 
 alert-permission: 'better.anticheat'
 
