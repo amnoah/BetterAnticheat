@@ -3,6 +3,7 @@ package better.anticheat.core.check.impl.combat;
 import better.anticheat.core.BetterAnticheat;
 import better.anticheat.core.check.Check;
 import better.anticheat.core.check.CheckInfo;
+import better.anticheat.core.player.Player;
 import com.github.retrooper.packetevents.event.simple.PacketPlayReceiveEvent;
 import com.github.retrooper.packetevents.protocol.player.DiggingAction;
 import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientInteractEntity;
@@ -16,8 +17,8 @@ public class InvalidUseActionsCheck extends Check {
 
     private boolean blocking = false, attacked = false, placed = false;
 
-    public InvalidUseActionsCheck(BetterAnticheat plugin) {
-        super(plugin);
+    public InvalidUseActionsCheck(BetterAnticheat plugin, Player player) {
+        super(plugin, player);
     }
 
     @Override

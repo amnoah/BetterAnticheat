@@ -3,6 +3,7 @@ package better.anticheat.core.check.impl.flying;
 import better.anticheat.core.BetterAnticheat;
 import better.anticheat.core.check.Check;
 import better.anticheat.core.check.CheckInfo;
+import better.anticheat.core.player.Player;
 import com.github.retrooper.packetevents.event.simple.PacketPlayReceiveEvent;
 import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientPlayerFlying;
 
@@ -12,8 +13,8 @@ import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientPl
 @CheckInfo(name = "ImpossibleRotation", category = "flying")
 public class ImpossibleRotationCheck extends Check {
 
-    public ImpossibleRotationCheck(BetterAnticheat plugin) {
-        super(plugin);
+    public ImpossibleRotationCheck(BetterAnticheat plugin, Player player) {
+        super(plugin, player);
     }
 
     @Override

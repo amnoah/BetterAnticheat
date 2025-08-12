@@ -4,6 +4,7 @@ import better.anticheat.core.BetterAnticheat;
 import better.anticheat.core.check.Check;
 import better.anticheat.core.check.CheckInfo;
 import better.anticheat.core.check.ClientFeatureRequirement;
+import better.anticheat.core.player.Player;
 import com.github.retrooper.packetevents.event.simple.PacketPlayReceiveEvent;
 import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientInteractEntity;
 import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientPlayerDigging;
@@ -16,8 +17,8 @@ public class DualClickCheck extends Check {
 
     private boolean leftClickAtk = false, leftClickDig = false, rightClickUse = false, rightClickPlace = false;
 
-    public DualClickCheck(BetterAnticheat plugin) {
-        super(plugin);
+    public DualClickCheck(BetterAnticheat plugin, Player player) {
+        super(plugin, player);
     }
 
     @Override

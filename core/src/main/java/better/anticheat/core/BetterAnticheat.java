@@ -3,6 +3,7 @@ package better.anticheat.core;
 import better.anticheat.core.check.CheckManager;
 import better.anticheat.core.command.CommandManager;
 import better.anticheat.core.configuration.ConfigSection;
+import better.anticheat.core.configuration.ConfigurationManager;
 import better.anticheat.core.punishment.PunishmentManager;
 import better.anticheat.core.configuration.ConfigurationFile;
 import better.anticheat.core.player.PlayerManager;
@@ -41,6 +42,7 @@ public class BetterAnticheat {
     // Managers
     private final CheckManager checkManager;
     private final CommandManager commandManager;
+    private final ConfigurationManager configurationManager;
     private final LyricManager lyricManager;
     private final PlayerManager playerManager;
     private final PunishmentManager punishmentManager;
@@ -78,6 +80,8 @@ public class BetterAnticheat {
 
         instance = this;
 
+        this.configurationManager = new ConfigurationManager(this);
+
         this.checkManager = new CheckManager(this);
         this.recordingSaver = new RecordingSaver(directory);
         this.commandManager = new CommandManager(this, lamp);
@@ -112,6 +116,8 @@ public class BetterAnticheat {
         if (!enabled) return;
 
         dataBridge.logInfo("Beginning load!");
+
+        configurationManager.load();
 
         ConfigSection settings = getFile("settings.yml", BetterAnticheat.class.getResourceAsStream("/settings.yml")).load();
         alertCooldown = settings.getObject(Integer.class, "alert-cooldown", 1000);
@@ -190,7 +196,6 @@ public class BetterAnticheat {
         loadCookieAllocator(settings);
 
         punishmentManager.load();
-        checkManager.load();
         this.lamp = commandManager.load();
         playerManager.load();
 

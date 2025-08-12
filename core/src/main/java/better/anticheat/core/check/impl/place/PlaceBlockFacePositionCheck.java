@@ -3,6 +3,7 @@ package better.anticheat.core.check.impl.place;
 import better.anticheat.core.BetterAnticheat;
 import better.anticheat.core.check.Check;
 import better.anticheat.core.check.CheckInfo;
+import better.anticheat.core.player.Player;
 import com.github.retrooper.packetevents.event.simple.PacketPlayReceiveEvent;
 import com.github.retrooper.packetevents.protocol.packettype.PacketType;
 import com.github.retrooper.packetevents.util.Vector3d;
@@ -18,8 +19,8 @@ public class PlaceBlockFacePositionCheck extends Check {
 
     private Vector3d position = null;
 
-    public PlaceBlockFacePositionCheck(BetterAnticheat plugin) {
-        super(plugin);
+    public PlaceBlockFacePositionCheck(BetterAnticheat plugin, Player player) {
+        super(plugin, player);
     }
 
     @Override

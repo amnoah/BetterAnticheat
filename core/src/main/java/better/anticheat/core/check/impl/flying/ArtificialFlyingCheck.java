@@ -4,6 +4,7 @@ import better.anticheat.core.BetterAnticheat;
 import better.anticheat.core.check.Check;
 import better.anticheat.core.check.CheckInfo;
 import better.anticheat.core.check.ClientFeatureRequirement;
+import better.anticheat.core.player.Player;
 import com.github.retrooper.packetevents.event.simple.PacketPlayReceiveEvent;
 
 /**
@@ -20,8 +21,8 @@ public class ArtificialFlyingCheck extends Check {
 
     private boolean sentFlying = false, teleported = true;
 
-    public ArtificialFlyingCheck(BetterAnticheat plugin) {
-        super(plugin);
+    public ArtificialFlyingCheck(BetterAnticheat plugin, Player player) {
+        super(plugin, player);
     }
 
     @Override

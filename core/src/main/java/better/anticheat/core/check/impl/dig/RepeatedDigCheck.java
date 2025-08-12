@@ -4,6 +4,7 @@ import better.anticheat.core.BetterAnticheat;
 import better.anticheat.core.check.Check;
 import better.anticheat.core.check.CheckInfo;
 import better.anticheat.core.check.ClientFeatureRequirement;
+import better.anticheat.core.player.Player;
 import com.github.retrooper.packetevents.event.simple.PacketPlayReceiveEvent;
 import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientPlayerDigging;
 
@@ -15,8 +16,8 @@ public class RepeatedDigCheck extends Check {
 
     private boolean dug = false;
 
-    public RepeatedDigCheck(BetterAnticheat plugin) {
-        super(plugin);
+    public RepeatedDigCheck(BetterAnticheat plugin, Player player) {
+        super(plugin, player);
     }
 
     @Override

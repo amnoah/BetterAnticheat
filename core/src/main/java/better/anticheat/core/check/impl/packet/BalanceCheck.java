@@ -5,6 +5,7 @@ import better.anticheat.core.check.Check;
 import better.anticheat.core.check.CheckInfo;
 import better.anticheat.core.check.ClientFeatureRequirement;
 import better.anticheat.core.configuration.ConfigSection;
+import better.anticheat.core.player.Player;
 import com.github.retrooper.packetevents.event.simple.PacketPlayReceiveEvent;
 
 /**
@@ -20,8 +21,8 @@ public class BalanceCheck extends Check {
     private long lastTick = -1, balance = 0;
     private long maxBalance, minBalance;
 
-    public BalanceCheck(BetterAnticheat plugin) {
-        super(plugin);
+    public BalanceCheck(BetterAnticheat plugin, Player player) {
+        super(plugin, player);
     }
 
     @Override
@@ -98,13 +99,5 @@ public class BalanceCheck extends Check {
         minBalance = section.getObject(Integer.class, "min-balance", -3000);
 
         return modified;
-    }
-
-    @Override
-    public void load() {
-        super.load();
-        BalanceCheck balanceCheck = (BalanceCheck) reference;
-        maxBalance = balanceCheck.maxBalance;
-        minBalance = balanceCheck.minBalance;
     }
 }

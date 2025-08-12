@@ -4,6 +4,7 @@ import better.anticheat.core.BetterAnticheat;
 import better.anticheat.core.check.Check;
 import better.anticheat.core.check.CheckInfo;
 import better.anticheat.core.check.ClientFeatureRequirement;
+import better.anticheat.core.player.Player;
 import com.github.retrooper.packetevents.event.simple.PacketPlayReceiveEvent;
 import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientInteractEntity;
 
@@ -15,8 +16,8 @@ public class MultipleHitCheck extends Check {
 
     private Integer lastEnemy;
 
-    public MultipleHitCheck(BetterAnticheat plugin) {
-        super(plugin);
+    public MultipleHitCheck(BetterAnticheat plugin, Player player) {
+        super(plugin, player);
     }
 
     @Override

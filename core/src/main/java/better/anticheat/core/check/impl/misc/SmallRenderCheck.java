@@ -3,6 +3,7 @@ package better.anticheat.core.check.impl.misc;
 import better.anticheat.core.BetterAnticheat;
 import better.anticheat.core.check.Check;
 import better.anticheat.core.check.CheckInfo;
+import better.anticheat.core.player.Player;
 import com.github.retrooper.packetevents.event.simple.PacketPlayReceiveEvent;
 import com.github.retrooper.packetevents.protocol.packettype.PacketType;
 import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientSettings;
@@ -13,8 +14,8 @@ import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientSe
 @CheckInfo(name = "SmallRender", category = "misc")
 public class SmallRenderCheck extends Check {
 
-    public SmallRenderCheck(BetterAnticheat plugin) {
-        super(plugin);
+    public SmallRenderCheck(BetterAnticheat plugin, Player player) {
+        super(plugin, player);
     }
 
     @Override

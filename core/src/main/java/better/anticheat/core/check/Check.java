@@ -29,21 +29,18 @@ import java.util.List;
  * 5. The fail method indicates that a player is cheating.
  * 6. If you override the config handling, you must super.load()!
  */
-public abstract class Check implements Cloneable {
+public abstract class Check {
 
     protected BetterAnticheat plugin;
-    protected Check reference;
     @Getter
     protected Player player;
 
-    @Getter
-    @Setter
+    @Getter @Setter
     private String name, category, config;
     @Getter
     private final boolean experimental;
 
-    @Getter
-    @Setter
+    @Getter @Setter
     private boolean enabled = false;
     private int alertVL = 10, verboseVL = 1;
     private int decay = -1;
@@ -77,7 +74,7 @@ public abstract class Check implements Cloneable {
      * Construct the check via info provided in CheckInfo annotation.
      * This is the recommended approach but requires a @CheckInfo annotation on implementations.
      */
-    public Check(BetterAnticheat plugin) {
+    public Check(BetterAnticheat plugin, Player player) {
         this.plugin = plugin;
         CheckInfo info = this.getClass().getAnnotation(CheckInfo.class);
         if (info == null) throw new InvalidParameterException("No CheckInfo annotation on class: " + this.getClass().getName() + "!");
@@ -92,7 +89,7 @@ public abstract class Check implements Cloneable {
     /**
      * Construct the check via parameters.
      */
-    public Check(BetterAnticheat plugin, String name, String category, String config, boolean experimental) {
+    public Check(BetterAnticheat plugin, Player player, String name, String category, String config, boolean experimental) {
         this.plugin = plugin;
         this.name = name;
         this.category = category;
@@ -104,41 +101,6 @@ public abstract class Check implements Cloneable {
     }
 
     public void handleSendPlayPacket(PacketPlaySendEvent event) {
-    }
-
-    /*
-     * Check set up.
-     */
-
-    public void load() {
-        if (reference == null) return;
-        enabled = reference.enabled;
-        alertVL = reference.alertVL;
-        vl = reference.vl;
-    }
-
-    public synchronized Check initialCopy(final Player player, final ThreadSafeFory copier) {
-        final var plugin = this.plugin;
-        this.plugin = null;
-
-        final var check = copier.copy(this);
-
-        this.plugin = plugin;
-        check.plugin = plugin;
-
-        check.reference = this;
-        check.player = player;
-        check.load();
-        return check;
-    }
-
-    @Override
-    protected Check clone() {
-        try {
-            return (Check) super.clone();
-        } catch (CloneNotSupportedException e) {
-            throw new AssertionError();
-        }
     }
 
     /*

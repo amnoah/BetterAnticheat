@@ -171,7 +171,7 @@ public class CMLTracker extends Tracker {
         private final DecimalFormat df = new DecimalFormat("#.####");
 
         public MLCheck(final Player player, final ModelConfig modelConfig) {
-            super(BetterAnticheat.getInstance(), "ML Aim: " + modelConfig.getDisplayName(), "", "", false);
+            super(BetterAnticheat.getInstance(), player, "ML Aim: " + modelConfig.getDisplayName(), "", "", false);
 
             this.modelConfig = modelConfig;
             this.player = player;

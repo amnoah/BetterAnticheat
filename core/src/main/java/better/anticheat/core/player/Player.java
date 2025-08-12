@@ -129,8 +129,7 @@ public class Player implements Closeable {
      */
 
     public void load() {
-        if (checks == null) checks = BetterAnticheat.getInstance().getCheckManager().getChecks(this);
-        else for (Check check : checks) check.load();
+        checks = plugin.getCheckManager().getChecks(this);
 
         // Load CML generated checks.
         this.cmlTracker.onPlayerInit();

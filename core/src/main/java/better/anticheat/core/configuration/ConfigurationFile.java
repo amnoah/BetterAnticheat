@@ -1,6 +1,6 @@
 package better.anticheat.core.configuration;
 
-import lombok.Getter;
+import lombok.Setter;
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.Yaml;
 
@@ -24,21 +24,16 @@ public class ConfigurationFile {
     private final InputStream input;
     private final Yaml yaml;
     private Map<String, Object> root = null;
+    @Setter
+    private boolean modified;
 
     protected File configFile;
 
+    /**
+     * Create the ConfigurationFile object without an input stream. By default, this will
+     */
     public ConfigurationFile(String fileName, Path directoryPath) {
-        this.fileName = fileName;
-        this.directoryPath = directoryPath;
-        this.input = null;
-        this.filePath = directoryPath.resolve(fileName);
-        DumperOptions options = new DumperOptions();
-        options.setIndent(2);
-        options.setPrettyFlow(true);
-        options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
-        options.setIndicatorIndent(2);
-        options.setIndentWithIndicator(true);
-        yaml = new Yaml(options);
+        this(fileName, directoryPath, null);
     }
 
     public ConfigurationFile(String fileName, Path directoryPath, InputStream input) {
@@ -78,19 +73,21 @@ public class ConfigurationFile {
         }
 
         if (root == null) root = new LinkedHashMap<>();
-        return new ConfigSection(root);
+        return new ConfigSection(this, root);
     }
 
     public void save() {
+        if (!modified) return;
         try (PrintWriter writer = new PrintWriter(configFile)) {
             yaml.dump(root, writer);
         } catch (Exception e) {
             e.printStackTrace();
         }
+        modified = false;
     }
 
     public ConfigSection getRoot() {
-        if (root == null) load();
-        return new ConfigSection(root);
+        if (root == null) return load();
+        return new ConfigSection(this, root);
     }
 }
