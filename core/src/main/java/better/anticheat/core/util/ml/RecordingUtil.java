@@ -2,6 +2,8 @@ package better.anticheat.core.util.ml;
 
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONArray;
+import com.alibaba.fastjson2.JSONException;
+import com.alibaba.fastjson2.JSONObject;
 import com.github.luben.zstd.Zstd;
 import java.io.IOException;
 import java.io.InputStream;
@@ -102,7 +104,12 @@ public class RecordingUtil {
     }
 
     public double[][][] readData(byte[] jsonData) {
-        final var root = JSON.parseObject(new String(jsonData, StandardCharsets.UTF_16LE));
+        JSONObject root;
+        try {
+            root = JSON.parseObject(new String(jsonData, StandardCharsets.UTF_16LE));
+        } catch (final JSONException ignored) {
+            root = JSON.parseObject(new String(jsonData, StandardCharsets.UTF_8));
+        }
         final var yawsArrays = root.getJSONArray("yaws");
         final var offsetsArrays = root.getJSONArray("offsets");
         final var enhancedOffsetsArrays = root.getJSONArray("enhancedOffsets");
