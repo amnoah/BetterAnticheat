@@ -43,6 +43,8 @@ public class HitregMitigationTracker extends Tracker {
     public void handlePacketPlayReceive(@NotNull final PacketPlayReceiveEvent event) {
         switch (event.getPacketType()) {
             case INTERACT_ENTITY -> {
+                if (!betterAnticheat.isMitigationCombatDamageHitregEnabled()) return;
+
                 final WrapperPlayClientInteractEntity packet = new WrapperPlayClientInteractEntity(event);
                 // Skip non attack packets
                 if (packet.getAction() != WrapperPlayClientInteractEntity.InteractAction.ATTACK) return;
@@ -74,6 +76,9 @@ public class HitregMitigationTracker extends Tracker {
                 }
             }
             case ANIMATION -> {
+                // Do not run if not enabled
+                if (!betterAnticheat.isMitigationCombatDamageHitregEnabled()) return;
+
                 // Anti lag
                 if (player.getActionTracker().getTicksSinceAttack().get() > 10_000) {
                     return;
