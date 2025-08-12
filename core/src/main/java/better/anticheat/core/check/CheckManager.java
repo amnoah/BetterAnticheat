@@ -13,7 +13,7 @@ import better.anticheat.core.check.impl.flying.*;
 import better.anticheat.core.check.impl.heuristic.AimStabilizationCheck;
 import better.anticheat.core.check.impl.heuristic.CombatAccelerationCheck;
 import better.anticheat.core.check.impl.heuristic.LinearAimDeviationCheck;
-import better.anticheat.core.check.impl.heuristic.MicroMovementCheck;
+import better.anticheat.core.check.impl.heuristic.MicroAimMovementCheck;
 import better.anticheat.core.check.impl.misc.*;
 import better.anticheat.core.check.impl.packet.BalanceCheck;
 import better.anticheat.core.check.impl.packet.PostCheck;
@@ -75,7 +75,7 @@ public class CheckManager {
                 new AimStabilizationCheck(plugin),
                 new CombatAccelerationCheck(plugin),
                 new LinearAimDeviationCheck(plugin),
-                new MicroMovementCheck(plugin),
+                new MicroAimMovementCheck(plugin),
 
                 // Misc Checks
                 new ImpossibleHorseJumpCheck(plugin),

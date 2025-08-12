@@ -111,6 +111,13 @@ public class EntityTracker extends Tracker {
                         wrapper.getPosition().getZ());
                 break;
             }
+            case ENTITY_POSITION_SYNC: {
+                final var wrapper = new WrapperPlayServerEntityPositionSync(event);
+                final var posData = wrapper.getValues();
+                this.teleport(wrapper.getId(), posData.getPosition().getX(), posData.getPosition().getY(),
+                        posData.getPosition().getZ());
+                break;
+            }
             case ENTITY_METADATA: {
                 final var wrapper = new WrapperPlayServerEntityMetadata(event);
                 this.handleMetadata(wrapper);

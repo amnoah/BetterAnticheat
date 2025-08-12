@@ -9,20 +9,19 @@ import better.anticheat.core.util.MathUtil;
 import com.github.retrooper.packetevents.event.simple.PacketPlayReceiveEvent;
 import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientInteractEntity;
 import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientPlayerFlying;
-import wtf.spare.sparej.EvictingDeque;
 import wtf.spare.sparej.fastlist.evicting.ord.OrderedArrayFloatEvictingList;
 
 /**
  * This check looks for very small mouse movement during combat.
  */
 @CheckInfo(name = "MicroAimMovement", category = "heuristic", requirements = ClientFeatureRequirement.CLIENT_TICK_END)
-public class MicroMovementCheck extends Check {
+public class MicroAimMovementCheck extends Check {
 
     private int ticksSinceAttack = 0, buffer = 0;
     private final OrderedArrayFloatEvictingList yawSamples = new OrderedArrayFloatEvictingList(128);
     private final OrderedArrayFloatEvictingList pitchSamples = new OrderedArrayFloatEvictingList(128);
 
-    public MicroMovementCheck(BetterAnticheat plugin) {
+    public MicroAimMovementCheck(BetterAnticheat plugin) {
         super(plugin);
     }
 

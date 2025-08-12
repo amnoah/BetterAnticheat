@@ -5,6 +5,7 @@ import better.anticheat.core.player.Player;
 import better.anticheat.core.player.tracker.Tracker;
 import better.anticheat.core.util.entity.raycast.SimpleRayCastUtil;
 import com.github.retrooper.packetevents.event.simple.PacketPlayReceiveEvent;
+import com.github.retrooper.packetevents.protocol.attribute.Attributes;
 import com.github.retrooper.packetevents.protocol.entity.type.EntityTypes;
 import com.github.retrooper.packetevents.protocol.player.ClientVersion;
 import com.github.retrooper.packetevents.protocol.player.InteractionHand;
@@ -26,8 +27,10 @@ import java.util.Optional;
 public class HitregMitigationTracker extends Tracker {
     @Getter
     private final IntIncrementer mitigationTicks = new IntIncrementer(0);
-    private final IntIncrementer unprocessedFakeCounter = new IntIncrementer(0);
-    private final IntIncrementer hitCancelCounter = new IntIncrementer(0);
+    private final IntIncrementer compensationUnprocessedFakeCounter = new IntIncrementer(0);
+    private final IntIncrementer compensationHitCancelCounter = new IntIncrementer(0);
+    @Getter
+    private final IntIncrementer hitCancelQueueCounter = new IntIncrementer(0);
     private final BetterAnticheat betterAnticheat;
     private final SimpleRayCastUtil simpleRayCastUtil;
     private final boolean supportsTickEnd;
@@ -43,24 +46,32 @@ public class HitregMitigationTracker extends Tracker {
     public void handlePacketPlayReceive(@NotNull final PacketPlayReceiveEvent event) {
         switch (event.getPacketType()) {
             case INTERACT_ENTITY -> {
-                if (!betterAnticheat.isMitigationCombatDamageHitregEnabled()) return;
 
                 final WrapperPlayClientInteractEntity packet = new WrapperPlayClientInteractEntity(event);
                 // Skip non attack packets
                 if (packet.getAction() != WrapperPlayClientInteractEntity.InteractAction.ATTACK) return;
 
+                // Handle other checks cancel requests first.
+                // This is only really used for reach.
+                if (this.hitCancelQueueCounter.get() > 0) {
+                    this.hitCancelQueueCounter.decrementOrMin(0);
+                    event.setCancelled(true);
+                    return;
+                }
+
+                if (!betterAnticheat.isMitigationCombatDamageHitregEnabled()) return;
                 // Skip if unprocessed fake packet
                 // Cancel if cancel counter requires it.
                 // TODO: Uncomment if the silent packet sending gets broken again.
                 // if (this.unprocessedFakeCounter.get() <= 0) {
-                if (this.hitCancelCounter.get() > 0) {
-                    this.hitCancelCounter.decrementOrMin(0);
+                if (this.compensationHitCancelCounter.get() > 0) {
+                    this.compensationHitCancelCounter.decrementOrMin(0);
                     event.setCancelled(true);
                 }
                 // }
 
                 // Decrement unprocessed fake packet counter
-                this.unprocessedFakeCounter.decrementOrMin(0);
+                this.compensationUnprocessedFakeCounter.decrementOrMin(0);
 
                 // Now, handle hit debounce mitigations.
                 if (this.mitigationTicks.get() <= 0 || !this.betterAnticheat.isMitigationCombatTickEnabled())
@@ -124,6 +135,8 @@ public class HitregMitigationTracker extends Tracker {
                         playerPos
                 );
 
+                final var poses = this.player.getPlayerStatusTracker().getMostLikelyPoses();
+
                 // Prevent major performance issues in crowded areas.
                 var scanned = 0;
                 for (final var entity : player.getEntityTracker().getEntities().values()) {
@@ -146,19 +159,23 @@ public class HitregMitigationTracker extends Tracker {
                     // 0.2 is the hitbox cheat I want to give people.
                     var marginOfError = 0.005 + 0.2;
 
-                    final var rayCastResult = this.simpleRayCastUtil.checkNormalPose(entity, yaws, pitches, positions, marginOfError, 0.1);
+                    final var rayCastResult = this.simpleRayCastUtil.checkNormalPose(entity, yaws, pitches, poses, positions, marginOfError, 0.1);
 
                     // Inside entity, attack anyways because fuck cheaters
                     // if (rayCastResult.isCollided()) continue;
 
+                    final var reachAttribute = this.player.getPlayerStatusTracker().getAttributes().get(Attributes.ENTITY_INTERACTION_RANGE).getCurrent();
+
+                    final var baseReach = reachAttribute == null ? 3.0 : reachAttribute;
+                    final var reachLimit = baseReach + 1;
                     // Check hitbox matched and the distance is accceptable
-                    if (!(rayCastResult.getDistance() > 0 && rayCastResult.getDistance() < 3.5))
+                    if (!(rayCastResult.getDistance() > 0 && rayCastResult.getDistance() < reachLimit))
                         continue;
 
                     // Valid hit detected
                     // Increment the counters that are used on hit
                     // this.unprocessedFakeCounter.increment(); // TODO: Use this if the receive packet is not silent for some reason
-                    hitCancelCounter.increment();
+                    compensationHitCancelCounter.increment();
 
                     // Send packet
                     player.getUser().receivePacketSilently(new WrapperPlayClientInteractEntity(
@@ -187,6 +204,6 @@ public class HitregMitigationTracker extends Tracker {
 
     private void tick() {
         this.mitigationTicks.decrementOrMin(0);
-        this.hitCancelCounter.set(0);
+        this.compensationHitCancelCounter.set(0);
     }
 }

@@ -192,7 +192,18 @@ public class MathUtil {
 
     public double highest(double[] numbers) {
         double lowest = 0.0D;
-        int i = 0;
+
+        for (double number : numbers) {
+            if (number > lowest) {
+                lowest = number;
+            }
+        }
+
+        return lowest;
+    }
+
+    public double highest(Iterable<Double> numbers) {
+        double lowest = 0.0D;
 
         for (double number : numbers) {
             if (number > lowest) {
