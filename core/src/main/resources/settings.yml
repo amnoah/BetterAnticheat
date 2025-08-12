@@ -128,7 +128,7 @@ webhook:
   # The URL of the webhook to send messages to.
   url: ""
   # The message to send to the webhook.
-  message: "**%username%** failed **%type%** (VL: %vl%)"
+  message: "**%username%** failed **%type%** (VL: %vl%):\n%debug%"
 
   # The URL of the webhook to send recording saves to (optional).
   # If empty, will use the main webhook URL instead.

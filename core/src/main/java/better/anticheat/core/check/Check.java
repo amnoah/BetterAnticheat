@@ -265,7 +265,7 @@ public abstract class Check implements Cloneable {
          * Only run the punishment if the VL is not marked as verbose (debug) only.
          */
         if (!verboseOnly) {
-            plugin.getPunishmentManager().runPunishments(this);
+            plugin.getPunishmentManager().runPunishments(this, debug);
         }
     }
 
