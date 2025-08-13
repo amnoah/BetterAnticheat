@@ -4,6 +4,7 @@ import better.anticheat.core.BetterAnticheat;
 import com.github.retrooper.packetevents.PacketEvents;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 
@@ -24,31 +25,31 @@ public class CombatDamageListener implements Listener {
      *
      * @param event the damage event
      */
-    @EventHandler
+    @EventHandler(priority = EventPriority.HIGHEST)
     public void mitigateReduceDamage(EntityDamageByEntityEvent event) {
         if (!(event.getDamager() instanceof Player bukkitPlayer)) return;
 
         final var user = PacketEvents.getAPI().getPlayerManager().getUser(bukkitPlayer);
         if (user == null) return;
-        
+
         final var player = BetterAnticheat.getInstance().getPlayerManager().getPlayer(user);
         if (player == null) return;
-        
+
         final var mitigationTracker = player.getMitigationTracker();
         if (mitigationTracker == null) return;
-        
+
         if (!BetterAnticheat.getInstance().isMitigationCombatDamageEnabled()) return;
-        
+
         if (mitigationTracker.getMitigationTicks().get() <= 0) return;
 
         if (random.nextDouble() * 100.0 < BetterAnticheat.getInstance().getMitigationCombatDamageCancellationChance()) {
             event.setCancelled(true);
             return;
         }
-        
+
         final double damageMultiplier = BetterAnticheat.getInstance().getMitigationCombatDamageDealtDecrease();
         final double damagePercentage = Math.max(0.1, (100.0 - damageMultiplier)) / 100.0;
-        
+
         final double originalDamage = event.getDamage();
         final double newDamage = originalDamage * damagePercentage;
         event.setDamage(newDamage);
@@ -65,7 +66,7 @@ public class CombatDamageListener implements Listener {
      *
      * @param event the damage event
      */
-    @EventHandler
+    @EventHandler(priority = EventPriority.HIGHEST)
     public void mitigateIncreaseDamage(EntityDamageByEntityEvent event) {
         if (!(event.getEntity() instanceof Player bukkitPlayer)) return;
 
