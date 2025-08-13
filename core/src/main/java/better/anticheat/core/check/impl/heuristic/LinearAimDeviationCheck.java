@@ -210,8 +210,10 @@ public class LinearAimDeviationCheck extends Check {
         {
             var flags = 0.0;
 
-            if (interceptStdErr < 0.8) flags += 0.5;
-            if (slopeStdErr < 0.3) flags++;
+            if (interceptStdErr < 0.6) flags += 0.5;
+            else if (interceptStdErr < 0.8) flags += 0.25;
+            if (slopeStdErr < 0.24) flags++;
+            else if (slopeStdErr < 0.3) flags += 0.5;
             if (slope < -0.2) flags += 0.5;
             if (slope < -3) flags++;
             if (Math.abs(slope) < 0.1) flags += 0.5;
