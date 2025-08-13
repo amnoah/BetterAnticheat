@@ -237,8 +237,7 @@ public class LinearAimDeviationCheck extends Check {
                                 ", avgDiff=" + MathUtil.DF_SIX_PLACES.format(avgDiff) +
                                 ", stddev=" + MathUtil.DF_SIX_PLACES.format(stddev) +
                                 ", deltaYaw=" + MathUtil.DF_SIX_PLACES.format(deltaYaw) +
-                                ", yawOff=" + MathUtil.DF_SIX_PLACES.format(yawOffset) +
-                                ", teleported=false"
+                                ", yawOff=" + MathUtil.DF_SIX_PLACES.format(yawOffset)
                 );
             }
         }
