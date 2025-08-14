@@ -17,6 +17,7 @@ public class DependencyList {
             "com.github.luben:zstd-jni:1.5.6-7",
             "com.alibaba.fastjson2:fastjson2:2.0.57",
             "org.apache.fory:fory-core:0.11.2",
+            "org.spongepowered:configurate-hocon:4.2.0",
             // Start: Extra items because Libby is a pile of trash and does not resolve dependencies of dependencies section
             "com.github.haifengl:smile-base:4.4.0", // A dependency of smile. Update it as smile updates.
             "org.apache.commons:commons-csv:1.14.0", // A dependency of smile. Update it as smile updates.
