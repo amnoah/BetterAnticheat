@@ -22,20 +22,28 @@ public class PunishmentManager {
 
     public void load() {
         punishmentGroups.clear();
-        ConfigSection section = plugin.getFile("settings.yml").getRoot().getConfigSection("punishment-groups");
-        if (section == null) {
-            plugin.getDataBridge().logWarning("Punishment groups section not found in settings.yml!");
-            return;
-        }
+        ConfigSection section = plugin.getConfigurationManager().getConfigurationFile("settings.yml").getRoot().getConfigSectionOrCreate("punishment-groups");
 
         if (!section.hasNode("default")) {
-            plugin.getDataBridge().logWarning("Default punishment group not found in settings.yml! Please add it back.");
+            final var defaultNode = section.getConfigSectionOrCreate("default");
+            defaultNode.getOrSetStringList(
+                    "per-group-punishments",
+                    Arrays.asList("10:say %username% has accumulated 10 total VL!")
+            );
+            defaultNode.getOrSetStringList(
+                    "per-check-punishments",
+                    Arrays.asList(
+                            "1:say %username% would be kicked for %type%!",
+                            "5:say %username% would be banned for %type%!",
+                            "10:[webhook]"
+                    )
+            );
         }
 
         for (ConfigSection groupSection : section.getChildren()) {
-            String groupName = groupSection.getKey();
-            Map<Integer, List<String>> perGroupPunishments = parsePunishments(groupSection.getList(String.class, "per-group-punishments"), groupName);
-            Map<Integer, List<String>> perCheckPunishments = parsePunishments(groupSection.getList(String.class, "per-check-punishments"), groupName);
+            String groupName = (String) groupSection.getKey();
+            Map<Integer, List<String>> perGroupPunishments = parsePunishments(groupSection.getOrSetStringList("per-group-punishments", Collections.emptyList()), groupName);
+            Map<Integer, List<String>> perCheckPunishments = parsePunishments(groupSection.getOrSetStringList("per-check-punishments", Collections.emptyList()), groupName);
             punishmentGroups.put(groupName, new PunishmentGroup(groupName, perGroupPunishments, perCheckPunishments));
         }
     }

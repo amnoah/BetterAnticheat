@@ -23,9 +23,7 @@ import revxrsal.commands.Lamp;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Path;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Getter
 public class BetterAnticheat {
@@ -96,7 +94,13 @@ public class BetterAnticheat {
             dataBridge.logWarning("You are running on an unsupported version of Minecraft!");
             dataBridge.logWarning("Please update to 1.21 or above!");
             enabled = false;
+            return;
         }
+
+        configurationManager.registerDefaultConfig(
+                "settings.conf",
+                BetterAnticheat.class.getResourceAsStream("settings.conf")
+        );
     }
 
     public void enable() {
@@ -119,78 +123,47 @@ public class BetterAnticheat {
 
         configurationManager.load();
 
-        ConfigSection settings = getFile("settings.yml", BetterAnticheat.class.getResourceAsStream("/settings.yml")).load();
-        alertCooldown = settings.getObject(Integer.class, "alert-cooldown", 1000);
-        verboseCooldownDivisor = settings.getObject(Double.class, "verbose-cooldown-divisor", 4.0);
-        alertPermission = settings.getObject(String.class, "alert-permission", "better.anticheat");
-        alertHover = settings.getList(String.class, "alert-hover");
-        alertMessage = settings.getObject(String.class, "alert-message", "");
-        clickCommand = settings.getObject(String.class, "click-command", "");
-        punishmentModulo = settings.getObject(Boolean.class, "punishment-modulo", true);
-        testMode = settings.getObject(Boolean.class, "test-mode", false);
-        useCommand = settings.getObject(Boolean.class, "enable-commands", true);
-        ignorePre121Players = settings.getObject(Boolean.class, "dont-inject-pre-121-players", true);
+        ConfigSection settings = configurationManager.getConfigurationFile("settings.conf").getRoot();
 
-        final var webhookNode = settings.getConfigSection("webhook");
-        if (webhookNode != null) {
-            webhookUrl = webhookNode.getObject(String.class, "url", "");
-            webhookMessage = webhookNode.getObject(String.class, "message", "**%username%** failed **%type%** (VL: %vl%)");
-            saveWebhookUrl = webhookNode.getObject(String.class, "save-url", "");
-        } else {
-            webhookUrl = "";
-            webhookMessage = "**%username%** failed **%type%** (VL: %vl%)";
-            saveWebhookUrl = "";
-        }
+        alertCooldown = settings.getOrSetInteger("alert-cooldown", 1000);
+        verboseCooldownDivisor = settings.getOrSetDouble("verbose-cooldown-divisor", 4);
+        alertPermission = settings.getOrSetString("alert-permission", "better.anticheat");
+        alertHover = settings.getOrSetStringList("alert-hover", Arrays.asList("&7Client Version: &c%clientversion%&7.", "&7Debug: &c%debug%&7.", "&7Click to teleport to the player!"));
+        alertMessage = settings.getOrSetString("alert-message", "&c&lBA > &r&4%username% &7failed &4%type% &7VL: &4%vl%");
+        clickCommand = settings.getOrSetString("click-command", "tp %username%");
+        punishmentModulo = settings.getOrSetBoolean("punishment-modulo", true);
+
+        testMode = settings.getOrSetBoolean("test-mode", false);
+        useCommand = settings.getOrSetBoolean("enable-commands", true);
+        ignorePre121Players = settings.getOrSetBoolean("dont-inject-pre-121-players", true);
 
 
-        final var combatMitigationNode = settings.getConfigSection("combat-damage-mitigation");
+        final var webhookNode = settings.getConfigSectionOrCreate("webhook");
+        webhookUrl = webhookNode.getOrSetString("url", "");
+        webhookMessage = webhookNode.getOrSetString("message", "**%username%** failed **%type%** (VL: %vl%)");
+        saveWebhookUrl = webhookNode.getOrSetString("save-url", "");
 
-        if (combatMitigationNode == null) {
-            // Default values if configuration section doesn't exist
-            this.mitigationCombatDamageEnabled = true;
-            this.mitigationCombatDamageCancellationChance = 20.0;
-            this.mitigationCombatDamageTakenIncrease = 40.0;
-            this.mitigationCombatDamageDealtDecrease = 40.0;
-            this.mitigationCombatTickEnabled = true;
-            this.mitigationCombatTickDuration = 3;
-            this.mitigationCombatDamageHitregEnabled = false;
-        } else {
-            this.mitigationCombatDamageEnabled = combatMitigationNode
-                    .getObject(Boolean.class, "enabled", false);
-            this.mitigationCombatDamageCancellationChance = combatMitigationNode
-                    .getObject(Double.class, "hit-cancellation-chance", 20.0);
-            this.mitigationCombatDamageTakenIncrease = combatMitigationNode
-                    .getObject(Double.class, "damage-taken-increase", 40.0);
-            this.mitigationCombatDamageDealtDecrease = combatMitigationNode
-                    .getObject(Double.class, "damage-reduction-multiplier", 40.0);
-            this.mitigationCombatKnockbackDealtDecrease = combatMitigationNode
-                    .getObject(Double.class, "velocity-dealt-reduction", 40.0);
-            this.mitigationCombatDamageHitregEnabled = combatMitigationNode
-                    .getObject(Boolean.class, "mess-with-hitreg", false);
+        final var combatMitigationNode = settings.getConfigSectionOrCreate("combat-damage-mitigation");
+        mitigationCombatDamageEnabled = combatMitigationNode.getOrSetBoolean("enabled", true);
+        mitigationCombatDamageCancellationChance = combatMitigationNode.getOrSetDouble("hit-cancellation-chance", 20);
+        mitigationCombatDamageTakenIncrease = combatMitigationNode.getOrSetDouble("damage-taken-increase", 40);
+        mitigationCombatDamageDealtDecrease = combatMitigationNode.getOrSetDouble("damage-reduction-multiplier", 40);
+        mitigationCombatKnockbackDealtDecrease = combatMitigationNode.getOrSetDouble("velocity-dealt-reduction", 40);
+        mitigationCombatDamageHitregEnabled = combatMitigationNode.getOrSetBoolean("mess-with-hitreg", false);
 
-            final var velocityTickCheckNode = combatMitigationNode.getConfigSection("tick-mitigation");
-            if (velocityTickCheckNode != null) {
-                this.mitigationCombatTickEnabled = velocityTickCheckNode.getObject(Boolean.class, "enabled", true);
-                this.mitigationCombatTickDuration = velocityTickCheckNode.getObject(Integer.class, "min-ticks-since-last-attack", 4);
-            } else {
-                this.mitigationCombatTickEnabled = false;
-                this.mitigationCombatTickDuration = 3;
-            }
-        }
+        final var velocityTickNode = combatMitigationNode.getConfigSectionOrCreate("tick-mitigation");
+        mitigationCombatTickEnabled = velocityTickNode.getOrSetBoolean("enabled", true);
+        mitigationCombatTickDuration = velocityTickNode.getOrSetInteger("min-ticks-since-last-attack", 3);
 
         // Load auto-record settings
-        final var autoRecordNode = settings.getConfigSection("auto-record");
-        if (autoRecordNode != null) {
-            this.autoRecordEnabled = autoRecordNode.getObject(Boolean.class, "enabled", false);
-            this.autoRecordPermission = autoRecordNode.getObject(String.class, "permission", "better.anticheat.ml.record");
-        } else {
-            this.autoRecordEnabled = false;
-            this.autoRecordPermission = "better.anticheat.ml.record";
-        }
+        final var autoRecordNode = settings.getConfigSectionOrCreate("auto-record");
+        autoRecordEnabled = autoRecordNode.getOrSetBoolean("enabled", false);
+        autoRecordPermission = autoRecordNode.getOrSetString("permission", "better.anticheat.ml.record");
 
-        // This is true in the default config but we set it to false here so people updating their server without knowing about the new config do not get fucked.
-        this.entityTrackerFastAwaitingUpdate = settings.getObject(Boolean.class, "entity-tracker.fast-awaiting-update", false);
-        this.entityTrackerFastEntityBox = settings.getObject(Boolean.class, "entity-tracker.fast-entity-box", false);
+        // This is true in the default config but we set it to false here so people updating their server without knowing about the new config do not get messed up.
+        final var entityTracker = settings.getConfigSectionOrCreate("entity-tracker");
+        entityTrackerFastAwaitingUpdate = entityTracker.getOrSetBoolean("fast-awaiting-update", false);
+        entityTrackerFastEntityBox = entityTracker.getOrSetBoolean("fast-entity-box", false);
 
         loadML(settings);
         loadCookieAllocator(settings);
@@ -203,29 +176,29 @@ public class BetterAnticheat {
     }
 
     public void loadML(final ConfigSection baseConfig) {
-        final var mlNode = baseConfig.getConfigSection("ml");
-        final var mlEnabled = mlNode.getObject(Boolean.class, "enabled", false);
+        final var mlNode = baseConfig.getConfigSectionOrCreate("ml");
+        final var mlEnabled = mlNode.getOrSetBoolean("enabled", false);
 
-        final var models = mlNode.getConfigSection("models");
+        final var models = mlNode.getConfigSectionOrCreate("models");
 
         if (mlEnabled) {
             this.modelConfigs.clear();
 
             for (final var child : models.getChildren()) {
-                this.modelConfigs.put(child.getKey(), new ModelConfig(
-                        child.getObject(String.class, "display-name", "example-model"),
-                        child.getObject(String.class, "type", "model-type"),
-                        child.getObject(Integer.class, "slice", 1),
-                        child.getList(String.class, "legit-dataset-names"),
-                        child.getList(String.class, "cheat-dataset-names"),
-                        child.getObject(Boolean.class, "statistics", false),
-                        child.getObject(Boolean.class, "shrink", true),
-                        child.getObject(Integer.class, "samples", 10),
-                        child.getObject(Double.class, "alert-threshold", 7.5),
-                        child.getObject(Double.class, "mitigation-threshold", 6.0),
-                        child.getObject(Integer.class, "mitigation-only-ticks", 20),
-                        child.getObject(Integer.class, "tree-depth", 35),
-                        child.getObject(Integer.class, "node-size", 4),
+                this.modelConfigs.put((String) child.getKey(), new ModelConfig(
+                        child.getOrSetString("display-name", "example-model"),
+                        child.getOrSetString("type", "model-type"),
+                        child.getOrSetInteger("slice", 1),
+                        child.getOrSetStringList("legit-dataset-names", Collections.emptyList()),
+                        child.getOrSetStringList("cheat-dataset-names", Collections.emptyList()),
+                        child.getOrSetBoolean("statistics", false),
+                        child.getOrSetBoolean("shrink", true),
+                        child.getOrSetInteger("samples", 10),
+                        child.getOrSetDouble("alert-threshold", 7.5),
+                        child.getOrSetDouble("mitigation-threshold", 6.0),
+                        child.getOrSetInteger("mitigation-only-ticks", 20),
+                        child.getOrSetInteger("tree-depth", 35),
+                        child.getOrSetInteger("node-size", 4),
                         child
                 ));
             }
@@ -258,44 +231,29 @@ public class BetterAnticheat {
             return;
         }
 
-        final var type = cookieNode.getObject(String.class, "type", "sequential");
+        final var type = cookieNode.getOrSetString("type", "sequential");
         final var parametersNode = cookieNode.getConfigSection("parameters");
 
         final Map<String, Object> parameters = new HashMap<>();
         if (parametersNode != null) {
             // For file-based allocator
-            if (parametersNode.hasNode("filename")) {
-                parameters.put("filename", parametersNode.getObject(String.class, "filename", "cookie_sequences.txt"));
-            }
+            parameters.put("filename", parametersNode.getOrSetString("filename", "cookie_sequences.txt"));
 
             // For sequential allocator
-            if (parametersNode.hasNode("startValue")) {
-                parameters.put("startValue", parametersNode.getObject(Long.class, "startValue", 0L));
-            }
+            parameters.put("startValue", parametersNode.getOrSetObject(Long.class, "startValue", 0L));
 
             // For random allocator
-            if (parametersNode.hasNode("cookieLength")) {
-                parameters.put("cookieLength", parametersNode.getObject(Integer.class, "cookieLength", 8));
-            }
-            if (parametersNode.hasNode("maxRetries")) {
-                parameters.put("maxRetries", parametersNode.getObject(Integer.class, "maxRetries", 100));
-            }
+            parameters.put("cookieLength", parametersNode.getOrSetInteger("cookieLength", 8));
+            parameters.put("maxRetries", parametersNode.getOrSetInteger("maxRetries", 100));
 
             // For timestamp allocator
-            if (parametersNode.hasNode("randomBytesLength")) {
-                parameters.put("randomBytesLength", parametersNode.getObject(Integer.class, "randomBytesLength", 4));
-            }
+            parameters.put("randomBytesLength", parametersNode.getOrSetInteger("randomBytesLength", 4));
 
             // For lyric allocator
-            if (parametersNode.hasNode("artist")) {
-                parameters.put("artist", parametersNode.getObject(String.class, "artist", ""));
-            }
-            if (parametersNode.hasNode("title")) {
-                parameters.put("title", parametersNode.getObject(String.class, "title", ""));
-            }
-            if (parametersNode.hasNode("maxLines")) {
-                parameters.put("maxLines", parametersNode.getObject(Integer.class, "maxLines", 0));
-            }
+            parameters.put("artist", parametersNode.getOrSetString("artist", ""));
+
+            parameters.put("title", parametersNode.getOrSetString("title", ""));
+            parameters.put("maxLines", parametersNode.getOrSetInteger("maxLines", 0));
         }
 
         this.cookieAllocatorConfig = new CookieAllocatorConfig(type, parameters);
@@ -339,13 +297,4 @@ public class BetterAnticheat {
 
         dataBridge.logInfo("Loaded cookie allocator configuration: type=" + type + ", parameters=" + parameters);
     }
-
-    public ConfigurationFile getFile(String name) {
-        return new ConfigurationFile(name, directory);
-    }
-
-    public ConfigurationFile getFile(String name, InputStream input) {
-        return new ConfigurationFile(name, directory, input);
-    }
-
 }

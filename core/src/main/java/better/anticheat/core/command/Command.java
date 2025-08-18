@@ -131,10 +131,10 @@ public abstract class Command implements OrphanCommand {
     /**
      * Load default settings for the command and process them.
      */
-    public boolean load(ConfigSection section) {
+    public void load(ConfigSection section) {
         if (section == null) {
             enabled = false;
-            return false;
+            return;
         }
 
         // Attempt to lazy load parent command.;
@@ -145,14 +145,7 @@ public abstract class Command implements OrphanCommand {
             }
         }
 
-        boolean modified = false;
-
-        // Fetch enabled status.
-        if (!section.hasNode("enabled")) {
-            section.setObject(Boolean.class, "enabled", true);
-            modified = true;
-        }
-        enabled = section.getObject(Boolean.class, "enabled", true);
+        enabled = section.getOrSetBoolean("enabled", true);
         // Cannot be enabled if parent commands are disabled.
         Command par = parent;
         while (par != null) {
@@ -164,27 +157,16 @@ public abstract class Command implements OrphanCommand {
         }
 
         // No use in wasting more time loading.
-        if (!enabled) return modified;
+        if (!enabled) return;
 
         // Grab lists.
-
-        if (!section.hasNode("names")) {
-            section.setList(String.class, "names", defaultNames);
-            modified = true;
-        }
-        List<String> namesList = section.getList(String.class, "names");
+        List<String> namesList = section.getOrSetStringList("names", defaultNames);
         paths = new String[namesList.size()];
         for (int i = 0; i < namesList.size(); i++) paths[i] = namesList.get(i);
-
-        if (!section.hasNode("permissions")) {
-            if (defaultPermissions.isEmpty()) {
-                defaultPermissions.add("better.anticheat." + name.toLowerCase());
-                defaultPermissions.add("example.permission.node");
-            }
-            section.setList(String.class, "permissions", defaultPermissions);
-            modified = true;
-        }
-        List<String> permissionsList = section.getList(String.class, "permissions");
+        List<String> permissionsList = section.getOrSetStringList("permissions", Arrays.asList(
+                "better.anticheat." + name.toLowerCase(),
+                "example.permission.node"
+        ));
         permissions = new String[permissionsList.size()];
         for (int i = 0; i < permissionsList.size(); i++) permissions[i] = permissionsList.get(i);
 
@@ -204,7 +186,5 @@ public abstract class Command implements OrphanCommand {
             orphans = Orphans.path(finalPaths);
             paths = finalPaths;
         }
-
-        return modified;
     }
 }

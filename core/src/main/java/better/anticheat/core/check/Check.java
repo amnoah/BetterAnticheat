@@ -230,63 +230,25 @@ public abstract class Check {
     /**
      *
      */
-    public boolean load(ConfigSection section) {
+    public void load(ConfigSection section) {
         if (section == null) {
             enabled = false;
-            return false;
+            return;
         }
 
-        boolean modified = false;
-
-        // Fetch enabled status.
-        if (!section.hasNode("enabled")) {
-            section.setObject(Boolean.class, "enabled", true);
-            modified = true;
-        }
-        enabled = section.getObject(Boolean.class, "enabled", true);
+        enabled = section.getOrSetBooleanWithComment("enabled", true, "Whether the check should be enabled for players.");
 
         // No use in wasting more time loading.
-        if (!enabled) return modified;
+        if (!enabled) return;
 
-        // Fetch alertvl.
-        if (!section.hasNode("alert-vl")) {
-            section.setObject(Integer.class, "alert-vl", 1);
-            modified = true;
-        }
-        alertVL = section.getObject(Integer.class, "alert-vl", 5);
+        alertVL = section.getOrSetIntegerWithComment("alert-vl", 1, "At what VL should alerts start to be sent?");
+        verboseVL = section.getOrSetIntegerWithComment("verbose-vl", 1, "At what VL should verbose start to be sent?");
+        decay = section.getOrSetIntegerWithComment("decay", 1200000, "How many MS should pass before VL start to decay?");
 
-        if (!section.hasNode("verbose-vl")) {
-            section.setObject(Integer.class, "verbose-vl", 1);
-            modified = true;
-        }
-        verboseVL = section.getObject(Integer.class, "verbose-vl", 1);
-
-        if (!section.hasNode("decay")) {
-            section.setObject(Integer.class, "decay", 1200000);
-            modified = true;
-        }
-        decay = section.getObject(Integer.class, "decay", 1200000);
-
-        if (!section.hasNode("combat-mitigation-ticks-on-alert")) {
-            final var lowerCategory = category.toLowerCase();
-            final var lowerName = name.toLowerCase();
-            final var isCombatAdjacent = lowerCategory.contains("combat") || lowerCategory.contains("place")
-                    || lowerCategory.contains("heuristic") || lowerName.contains("aim");
-            section.setObject(Integer.class, "combat-mitigation-ticks-on-alert",
-                    isCombatAdjacent ? 40 : 0);
-            modified = true;
-        }
-        if (!section.hasNode("combat-mitigation-ticks-on-verbose")) {
-            final var lowerCategory = category.toLowerCase();
-            final var lowerName = name.toLowerCase();
-            final var isCombatAdjacent = lowerCategory.contains("combat") || lowerCategory.contains("place")
-                    || lowerCategory.contains("heuristic") || lowerName.contains("aim");
-            section.setObject(Integer.class, "combat-mitigation-ticks-on-verbose",
-                    isCombatAdjacent ? 5 : 0);
-            modified = true;
-        }
-        combatMitigationTicksOnAlert = section.getObject(Integer.class, "combat-mitigation-ticks-on-alert", 20);
-        combatMitigationTicksOnVerbose = section.getObject(Integer.class, "combat-mitigation-ticks-on-verbose", 5);
+        String lowerCategory = category.toLowerCase(), lowerName = name.toLowerCase();
+        var isCombatAdjacent = lowerCategory.contains("combat") || lowerCategory.contains("place") || lowerCategory.contains("heuristic") || lowerName.contains("aim");
+        combatMitigationTicksOnAlert = section.getOrSetInteger("combat-mitigation-ticks-on-alert", isCombatAdjacent ? 40 : 0);
+        combatMitigationTicksOnVerbose = section.getOrSetInteger("combat-mitigation-ticks-on-verbose", isCombatAdjacent ? 5 : 0);
 
         if (!section.hasNode("punishment-groups")) {
             List<String> groups = new ArrayList<>();
@@ -300,12 +262,12 @@ public abstract class Check {
                 }
             }
             section.setList(String.class, "punishment-groups", groups);
-            modified = true;
         }
         final var punishmentGroupNames = section.getList(String.class, "punishment-groups");
 
         punishmentGroups.clear();
-        for (final var groupName : punishmentGroupNames) {
+        if (punishmentGroupNames.isEmpty()) return;
+        for (final var groupName : punishmentGroupNames.get()) {
             final var group = plugin.getPunishmentManager().getPunishmentGroup(groupName);
             if (group != null) {
                 punishmentGroups.add(group);
@@ -313,14 +275,5 @@ public abstract class Check {
                 plugin.getDataBridge().logWarning("Punishment group '" + groupName + "' does not exist. The " + name + " check will not have any punishments.");
             }
         }
-
-
-        // Remove old sections.
-        if (section.hasNode("punishments")) {
-            section.removeNode("punishments");
-            modified = true;
-        }
-
-        return modified;
     }
 }

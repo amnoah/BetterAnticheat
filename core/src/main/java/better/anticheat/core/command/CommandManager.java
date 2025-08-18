@@ -62,43 +62,18 @@ public class CommandManager {
         });
         final var lamp = builder.build();
 
-        Map<String, ConfigurationFile> configMap = new HashMap<>();
-        Set<String> modified = new HashSet<>();
         int enabled = 0;
         for (Command command : commands) {
-            // Ensure the check has a defined config in its CheckInfo.
-            if (command.getConfig() == null) {
-                plugin.getDataBridge().logWarning("Could not load " + command.getName() + " due to null config!");
-                continue;
-            }
-
-            // Resolve the corresponding file.
-            String fileName = command.getConfig().toLowerCase();
-            ConfigurationFile file = configMap.get(fileName);
-            if (file == null) {
-                file = plugin.getFile(fileName + ".yml");
-                file.load();
-                configMap.put(fileName, file);
-            }
-
-            // Ensure the command is in the file.
+            ConfigurationFile file = plugin.getConfigurationManager().getConfigurationFile(command.getConfig().toLowerCase());
             ConfigSection node = file.getRoot();
-            if (!node.hasNode(command.getName())) {
-                modified.add(fileName);
-                node.addNode(command.getName());
-            }
-            node = node.getConfigSection(command.getName());
-
-            // Load the check with its appropriate config.
-            if (command.load(node)) modified.add(fileName);
+            node = node.getConfigSectionOrCreate(command.getName());
+            command.load(node);
             if (command.isEnabled()) {
                 enabled++;
                 // Register the command if
                 lamp.register(command.getOrphans().handler(command));
             }
         }
-
-        for (String file : modified) configMap.get(file).save();
 
         plugin.getDataBridge().logInfo("Loaded " + commands.size() + " commands, with " + enabled + " being enabled.");
 

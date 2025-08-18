@@ -228,7 +228,7 @@ public class ConfigSection {
      * class type or the user messed up the configuration).
      * 2. The node does not exist in the config.
      */
-    public <E extends Serializable> Optional<E> getObject(Class<E> classType, Object key) {
+    public @NotNull <E extends Serializable> Optional<E> getObject(Class<E> classType, Object key) {
         try {
             if (!hasNode(key)) return Optional.empty();
             E obj = node.node(key).get(classType);
@@ -242,7 +242,7 @@ public class ConfigSection {
      * Return the object at the given node. The class type input is only used to specify what the generic is. If the
      * given node isn't present, then we set it to the setValue.
      */
-    public <E extends Serializable> E getOrSetObject(Class<E> classType, Object key, E setValue) {
+    public @NotNull <E extends Serializable> E getOrSetObject(Class<E> classType, Object key, @NotNull E setValue) {
         return getOrSetObjectWithComment(classType, key, setValue, null);
     }
 
@@ -250,7 +250,7 @@ public class ConfigSection {
      * Return the object at the given node. The class type input is only used to specify what the generic is. If the
      * given node isn't present, then we set it to the setValue. If we set the value, we also set the given comment on it.
      */
-    public <E extends Serializable> E getOrSetObjectWithComment(Class<E> classType, Object key, E setValue, String comment) {
+    public @NotNull <E extends Serializable> E getOrSetObjectWithComment(Class<E> classType, Object key, @NotNull E setValue, String comment) {
         Optional<E> obj = getObject(classType, key);
         if (obj.isEmpty()) {
             setObject(classType, key, setValue);

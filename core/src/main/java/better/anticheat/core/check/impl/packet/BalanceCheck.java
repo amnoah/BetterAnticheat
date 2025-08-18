@@ -81,23 +81,9 @@ public class BalanceCheck extends Check {
     }
 
     @Override
-    public boolean load(ConfigSection section) {
-        boolean modified = super.load(section);
-
-        // Fetch max balance.
-        if (!section.hasNode("max-balance")) {
-            section.setObject(Integer.class, "max-balance", 300);
-            modified = true;
-        }
-        maxBalance = section.getObject(Integer.class, "max-balance", 300);
-
-        // Fetch max balance.
-        if (!section.hasNode("min-balance")) {
-            section.setObject(Integer.class, "min-balance", -3000);
-            modified = true;
-        }
-        minBalance = section.getObject(Integer.class, "min-balance", -3000);
-
-        return modified;
+    public void load(ConfigSection section) {
+        super.load(section);
+        maxBalance = section.getOrSetIntegerWithComment("max-balance", 300, "The max MS a client can get ahead before it flags.");
+        minBalance = section.getOrSetIntegerWithComment("min-balance", -3000, "The furthest a client can be accounted for lagging behind.");
     }
 }
