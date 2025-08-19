@@ -29,6 +29,12 @@ import java.util.*;
 public class BetterAnticheat {
 
     @Getter
+    @Deprecated
+    /*
+     * Going forward, we are going to avoid using static like this. You should not have a static manager if it needs
+     * something like this, which would usually be passed in a constructor. Instead, make it a proper object!
+     * Static access of the BetterAnticheat class will be removed soon. If you are currently using it, don't.
+     */
     private static BetterAnticheat instance;
 
     // Constructor-related objs
