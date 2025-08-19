@@ -59,6 +59,7 @@ public class ConfigurationFile {
         try {
             root = new ConfigSection(this, loader.load());
         } catch (Exception e) {
+            e.printStackTrace();
             root = null;
         }
 

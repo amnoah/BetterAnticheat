@@ -22,13 +22,13 @@ public class PunishmentManager {
 
     public void load() {
         punishmentGroups.clear();
-        ConfigSection section = plugin.getConfigurationManager().getConfigurationFile("settings.yml").getRoot().getConfigSectionOrCreate("punishment-groups");
+        ConfigSection section = plugin.getConfigurationManager().getConfigurationFile("settings.conf").getRoot().getConfigSectionOrCreate("punishment-groups");
 
         if (!section.hasNode("default")) {
             final var defaultNode = section.getConfigSectionOrCreate("default");
             defaultNode.getOrSetStringList(
                     "per-group-punishments",
-                    Arrays.asList("10:say %username% has accumulated 10 total VL!")
+                    List.of("10:say %username% has accumulated 10 total VL!")
             );
             defaultNode.getOrSetStringList(
                     "per-check-punishments",

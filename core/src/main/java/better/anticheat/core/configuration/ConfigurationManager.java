@@ -62,6 +62,13 @@ public class ConfigurationManager {
     }
 
     /**
+     * Save all configuration files in the system.
+     */
+    public void save() {
+        for (ConfigurationFile file : configMap.values()) file.save();
+    }
+
+    /**
      * Re-cache a given configuration file.
      */
     public void loadFile(String file) {

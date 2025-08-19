@@ -178,6 +178,8 @@ public class BetterAnticheat {
         this.lamp = commandManager.load();
         playerManager.load();
 
+        configurationManager.save();
+
         dataBridge.logInfo("Load finished!");
     }
 

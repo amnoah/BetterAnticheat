@@ -76,6 +76,7 @@ public abstract class Check {
      */
     public Check(BetterAnticheat plugin, Player player) {
         this.plugin = plugin;
+        this.player = player;
         CheckInfo info = this.getClass().getAnnotation(CheckInfo.class);
         if (info == null) throw new InvalidParameterException("No CheckInfo annotation on class: " + this.getClass().getName() + "!");
 

@@ -64,7 +64,7 @@ public class CommandManager {
 
         int enabled = 0;
         for (Command command : commands) {
-            ConfigurationFile file = plugin.getConfigurationManager().getConfigurationFile(command.getConfig().toLowerCase());
+            ConfigurationFile file = plugin.getConfigurationManager().getConfigurationFile(command.getConfig().toLowerCase() + ".conf");
             ConfigSection node = file.getRoot();
             node = node.getConfigSectionOrCreate(command.getName());
             command.load(node);

@@ -122,7 +122,7 @@ public class CheckManager {
                 }
             }
 
-            ConfigurationFile file = plugin.getConfigurationManager().getConfigurationFile(check.getConfig().toLowerCase());
+            ConfigurationFile file = plugin.getConfigurationManager().getConfigurationFile(check.getConfig().toLowerCase() + ".conf");
             ConfigSection node = file.getRoot();
             node = node.getConfigSectionOrCreate(check.getCategory(), check.getName());
             check.load(node);
