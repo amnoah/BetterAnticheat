@@ -2,6 +2,7 @@ package better.anticheat.core;
 
 import better.anticheat.core.check.CheckManager;
 import better.anticheat.core.command.CommandManager;
+import better.anticheat.core.command.CommandPacketListener;
 import better.anticheat.core.configuration.ConfigSection;
 import better.anticheat.core.configuration.ConfigurationManager;
 import better.anticheat.core.punishment.PunishmentManager;
@@ -112,6 +113,7 @@ public class BetterAnticheat {
     public void enable() {
         if (!enabled) return;
         PacketEvents.getAPI().getEventManager().registerListener(new PacketListener(this));
+        PacketEvents.getAPI().getEventManager().registerListeners(new CommandPacketListener(this));
         load();
 
         // Ensure players are 1.21+. We will conditionally load checks depending on features (e.g., CLIENT_TICK_END).

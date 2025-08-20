@@ -45,11 +45,12 @@ public abstract class Command implements OrphanCommand {
 
     // Config options.
     private boolean enabled;
-    private String[] paths, permissions;
+    private String[] names, paths, permissions;
     protected List<String> defaultNames = new ArrayList<>(), defaultPermissions = new ArrayList<>();
 
     //private String[] paths;
     private Orphans orphans;
+    private final List<Command> children = new ArrayList<>();
 
     /**
      * Construct the command via info provided in CommandInfo annotation.
@@ -104,7 +105,13 @@ public abstract class Command implements OrphanCommand {
      */
     public boolean hasPermission(final CommandActor actor) {
         if (actor.name().equalsIgnoreCase("console")) return true;
-        var user = getUserFromActor(actor);
+        return hasPermission(getUserFromActor(actor));
+    }
+
+    /**
+     * Return whether a given User has any of this command's permissions.
+     */
+    public boolean hasPermission(final User user) {
         if (user == null) return false;
         return plugin.getDataBridge().hasPermission(user, permissions);
     }
@@ -142,6 +149,7 @@ public abstract class Command implements OrphanCommand {
             for (Command command : plugin.getCommandManager().getAllCommands()) {
                 if (!command.getClass().equals(parentClass)) continue;
                 parent = command;
+                parent.children.add(this);
             }
         }
 
@@ -161,8 +169,8 @@ public abstract class Command implements OrphanCommand {
 
         // Grab lists.
         List<String> namesList = section.getOrSetStringList("names", defaultNames);
-        paths = new String[namesList.size()];
-        for (int i = 0; i < namesList.size(); i++) paths[i] = namesList.get(i);
+        names = new String[namesList.size()];
+        for (int i = 0; i < namesList.size(); i++) names[i] = namesList.get(i);
         List<String> permissionsList = section.getOrSetStringList("permissions", Arrays.asList(
                 "better.anticheat." + name.toLowerCase(),
                 "example.permission.node"
@@ -173,18 +181,17 @@ public abstract class Command implements OrphanCommand {
         // Process changes.
 
         if (parent == null) {
-            orphans = Orphans.path(paths);
+            paths = names;
         } else {
-            String[] finalPaths = new String[parent.paths.length * paths.length];
+            paths = new String[parent.paths.length * names.length];
             int i = 0;
             for (String parentPath : parent.paths) {
-                for (String childPath : paths) {
-                    finalPaths[i] = parentPath + " " + childPath;
+                for (String childPath : names) {
+                    paths[i] = parentPath + " " + childPath;
                     i++;
                 }
             }
-            orphans = Orphans.path(finalPaths);
-            paths = finalPaths;
         }
+        orphans = Orphans.path(paths);
     }
 }
