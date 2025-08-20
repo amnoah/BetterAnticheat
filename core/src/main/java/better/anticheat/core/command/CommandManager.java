@@ -14,12 +14,18 @@ import revxrsal.commands.command.CommandActor;
 
 import java.util.*;
 
+/**
+ * This manager provides a centralized way to handle commands for players.
+ */
 public class CommandManager {
 
     private final BetterAnticheat plugin;
     private final List<Command> commands;
     private Lamp.Builder<CommandActor> builder;
 
+    /**
+     * Initialize the CommandManager object.
+     */
     public CommandManager(BetterAnticheat plugin, Lamp.Builder<?> builder) {
         this.plugin = plugin;
         this.builder = (Lamp.Builder<CommandActor>) builder;
@@ -37,6 +43,9 @@ public class CommandManager {
         );
     }
 
+    /**
+     * Return a collection of all commands.
+     */
     public Collection<Command> getAllCommands() {
         return Collections.unmodifiableList(commands);
     }
@@ -70,7 +79,6 @@ public class CommandManager {
             command.load(node);
             if (command.isEnabled()) {
                 enabled++;
-                // Register the command if
                 lamp.register(command.getOrphans().handler(command));
             }
         }
