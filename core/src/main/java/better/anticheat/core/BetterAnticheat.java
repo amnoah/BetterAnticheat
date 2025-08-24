@@ -38,6 +38,45 @@ public class BetterAnticheat {
      */
     private static BetterAnticheat instance;
 
+    private final static List<ModelConfig> DEFAULT_ML_CONFIGS = new ArrayList<>();
+
+    static {
+        DEFAULT_ML_CONFIGS.add(new ModelConfig(
+                "raw-data-included-v0",
+                "Raw Data",
+                "decision_tree_gini",
+                0,
+                List.of("legit-small-2025-06-24-1", "legit-small-2025-07-29-1"),
+                List.of("cheat-small-2025-06-24-1", "cheat-small-2025-07-29-1"),
+                false,
+                false,
+                15,
+                7.5,
+                6,
+                10,
+                35,
+                4,
+                null
+        ));
+        DEFAULT_ML_CONFIGS.add(new ModelConfig(
+                "statistics-included-v0",
+                "Settings",
+                "decision_tree_entropy",
+                2,
+                List.of("legit-small-2025-06-24-1", "legit-small-2025-07-29-1"),
+                List.of("cheat-small-2025-06-24-1", "cheat-small-2025-07-29-1"),
+                true,
+                false,
+                20,
+                6,
+                5,
+                10,
+                30,
+                4,
+                null
+        ));
+    }
+
     // Constructor-related objs
     private final DataBridge dataBridge;
     private final Path directory;
@@ -58,7 +97,7 @@ public class BetterAnticheat {
     private double verboseCooldownDivisor;
     private List<String> alertHover;
     private String alertMessage, alertPermission, clickCommand;
-    private boolean punishmentModulo, testMode, useCommand, ignorePre121Players;
+    private boolean punishmentModulo, testMode, ignorePre121Players;
     private String webhookUrl, webhookMessage, saveWebhookUrl;
     private final Map<String, ModelConfig> modelConfigs = new Object2ObjectArrayMap<>();
     private boolean mitigationCombatDamageEnabled;
@@ -103,11 +142,6 @@ public class BetterAnticheat {
             enabled = false;
             return;
         }
-
-        configurationManager.registerDefaultConfig(
-                "settings.conf",
-                BetterAnticheat.class.getResourceAsStream("settings.conf")
-        );
     }
 
     public void enable() {
@@ -132,46 +166,186 @@ public class BetterAnticheat {
         configurationManager.load();
 
         ConfigSection settings = configurationManager.getConfigurationFile("settings.conf").getRoot();
+        if (settings == null) return;
 
-        alertCooldown = settings.getOrSetInteger("alert-cooldown", 1000);
-        verboseCooldownDivisor = settings.getOrSetDouble("verbose-cooldown-divisor", 4);
-        alertPermission = settings.getOrSetString("alert-permission", "better.anticheat");
-        alertHover = settings.getOrSetStringList("alert-hover", Arrays.asList("&7Client Version: &c%clientversion%&7.", "&7Debug: &c%debug%&7.", "&7Click to teleport to the player!"));
-        alertMessage = settings.getOrSetString("alert-message", "&c&lBA > &r&4%username% &7failed &4%type% &7VL: &4%vl%");
-        clickCommand = settings.getOrSetString("click-command", "tp %username%");
-        punishmentModulo = settings.getOrSetBoolean("punishment-modulo", true);
+        // Load general settings.conf settings.
 
-        testMode = settings.getOrSetBoolean("test-mode", false);
-        useCommand = settings.getOrSetBoolean("enable-commands", true);
-        ignorePre121Players = settings.getOrSetBoolean("dont-inject-pre-121-players", true);
+        alertCooldown = settings.getOrSetIntegerWithComment(
+                "alert-cooldown",
+                1000,
+                "How long in ms should it be before a given check can send another alert."
+        );
+        verboseCooldownDivisor = settings.getOrSetDoubleWithComment(
+                "verbose-cooldown-divisor",
+                4,
+                """
+                        How much should we divide the alert cooldown by for verbose alerts?
+                        If you keep alert cooldown at 1000ms, then verbose cooldown is the max amount of alerts per player per check per second."""
+        );
+        alertPermission = settings.getOrSetStringWithComment(
+                "alert-permission",
+                "better.anticheat",
+                "Users with this permission will receive alert messages."
+        );
+        alertHover = settings.getOrSetStringListWithComment(
+                "alert-hover",
+                Arrays.asList("&7Client Version: &c%clientversion%&7.", "&7Debug: &c%debug%&7.", "&7Click to teleport to the player!"),
+                """
+                        What should appear when an alert is hovered over?
+                        Set to [] to disable.
+                        Available Placeholders:
+                        %clientversion% - The player's Minecraft version.
+                        %debug% - Any debug the check outputs."""
+        );
+        alertMessage = settings.getOrSetStringWithComment(
+                "alert-message",
+                "&c&lBA > &r&4%username% &7failed &4%type% &7VL: &4%vl%",
+                """
+                        What message should be displayed when a check is failed?
+                        Set to "" to disable.
+                        Available Placeholders:
+                        %type% - The check that was failed.
+                        %vl% - The amount of times this player has failed the check.
+                        %username% - The username of the player who failed the check."""
+        );
+        clickCommand = settings.getOrSetStringWithComment(
+                "click-command",
+                "tp %username%",
+                """
+                        What command should be run when an alert message is clicked on?
+                        Set to "" to disable.
+                        Available Placeholders:
+                        %username% - The username of the player who failed the check."""
+        );
+        punishmentModulo = settings.getOrSetBooleanWithComment(
+                "punishment-modulo",
+                true,
+                """
+                        If true, punishments will be delivered if current VL is divisible by the punishment amount.
+                        Ex: At 8 vls, punishments set for 8, 4, 2, and 1 would run. Punishments set for 3, 5, 6, and 7 wouldn't.
+                        If false, punishments will be delivered at the written vl.
+                        Ex: At 8 vls, punishments set for 8 would run. Punishments set for 1, 2, 3, 4, 5, 6, and 7 wouldn't."""
+        );
+        ignorePre121Players = settings.getOrSetBooleanWithComment(
+                "dont-inject-pre-121-players",
+                true,
+                "Ignore pre-1.21 players to avoid compatibility issues, within the anticheat."
+        );
+        testMode = settings.getOrSetBooleanWithComment(
+                "test-mode",
+                false,
+                "Sends alerts only to the user who triggered it. Used for testing purposes."
+        );
 
+        // Webhook management.
 
         final var webhookNode = settings.getConfigSectionOrCreate("webhook");
-        webhookUrl = webhookNode.getOrSetString("url", "");
-        webhookMessage = webhookNode.getOrSetString("message", "**%username%** failed **%type%** (VL: %vl%)");
-        saveWebhookUrl = webhookNode.getOrSetString("save-url", "");
+        webhookUrl = webhookNode.getOrSetStringWithComment(
+                "url",
+                "",
+                "The URL of the webhook to send messages to. Set to \"\" to disable."
+        );
+        webhookMessage = webhookNode.getOrSetStringWithComment(
+                "message",
+                "**%username%** failed **%type%** (VL: %vl%)",
+                "The message to send to the webhook."
+        );
+        saveWebhookUrl = webhookNode.getOrSetStringWithComment(
+                "save-url",
+                "",
+                """
+                        The URL of the webhook to send recording saves to (optional).
+                        If set to "", it will use the main webhook URL instead."""
+        );
+
+        // Handle combat mitigation.
 
         final var combatMitigationNode = settings.getConfigSectionOrCreate("combat-damage-mitigation");
-        mitigationCombatDamageEnabled = combatMitigationNode.getOrSetBoolean("enabled", true);
-        mitigationCombatDamageCancellationChance = combatMitigationNode.getOrSetDouble("hit-cancellation-chance", 20);
-        mitigationCombatDamageTakenIncrease = combatMitigationNode.getOrSetDouble("damage-taken-increase", 40);
-        mitigationCombatDamageDealtDecrease = combatMitigationNode.getOrSetDouble("damage-reduction-multiplier", 40);
-        mitigationCombatKnockbackDealtDecrease = combatMitigationNode.getOrSetDouble("velocity-dealt-reduction", 40);
-        mitigationCombatDamageHitregEnabled = combatMitigationNode.getOrSetBoolean("mess-with-hitreg", false);
+        mitigationCombatDamageEnabled = combatMitigationNode.getOrSetBooleanWithComment(
+                "enabled",
+                true,
+                """
+                        Whether to enable ML-based combat damage modification
+                        Only works when ML is enabled."""
+        );
+        mitigationCombatDamageCancellationChance = combatMitigationNode.getOrSetDoubleWithComment(
+                "hit-cancellation-chance",
+                20,
+                "Multiplier for hit cancellation chance (average * multiplier = % chance), average is 1-10, where 10 is definitely cheating, and 1 is not cheating."
+        );
+        mitigationCombatDamageTakenIncrease = combatMitigationNode.getOrSetDoubleWithComment(
+                "damage-taken-increase",
+                40,
+                """
+                        Multiplier for damage increase calculation. Will increase damage taken by increase%.
+                        Not supported on Sponge and Velocity."""
+        );
+        mitigationCombatDamageDealtDecrease = combatMitigationNode.getOrSetDoubleWithComment(
+                "damage-dealt-reduction",
+                40,
+                """
+                        Multiplier for damage reduction calculation. Will reduce damage dealt by reduction%.
+                        Not supported on Sponge and Velocity."""
+        );
+        mitigationCombatKnockbackDealtDecrease = combatMitigationNode.getOrSetDoubleWithComment(
+                "velocity-dealt-reduction",
+                40,
+                """
+                        Multiplier for knockback reduction calculation. Will reduce velocity by reduction%.
+                        Not supported on Sponge and Velocity."""
+        );
+        mitigationCombatDamageHitregEnabled = combatMitigationNode.getOrSetBooleanWithComment(
+                "mess-with-hitreg",
+                false,
+                """
+                        Mess with hitreg to make life horrible for cheaters? Works by giving the person who is attacking the cheater server-side hitbox and reach cheats.
+                        Can break other anticheat's reach and hitbox checks.
+                        Is probably the most OP mitigation."""
+        );
 
-        final var velocityTickNode = combatMitigationNode.getConfigSectionOrCreate("tick-mitigation");
-        mitigationCombatTickEnabled = velocityTickNode.getOrSetBoolean("enabled", true);
-        mitigationCombatTickDuration = velocityTickNode.getOrSetInteger("min-ticks-since-last-attack", 3);
+        final var combatTickNode = combatMitigationNode.getConfigSectionOrCreate("tick-mitigation");
+        mitigationCombatTickEnabled = combatTickNode.getOrSetBooleanWithComment(
+                "enabled",
+                true,
+                "Tick-based attack cancellation. Is effectively a cps limit for cheaters."
+        );
+        mitigationCombatTickDuration = combatTickNode.getOrSetIntegerWithComment(
+                "min-ticks-since-last-attack",
+                3,
+                "Minimum number of ticks since the last attack, in order to allow a new attack."
+        );
 
         // Load auto-record settings
         final var autoRecordNode = settings.getConfigSectionOrCreate("auto-record");
-        autoRecordEnabled = autoRecordNode.getOrSetBoolean("enabled", false);
-        autoRecordPermission = autoRecordNode.getOrSetString("permission", "better.anticheat.ml.record");
+        autoRecordEnabled = autoRecordNode.getOrSetBooleanWithComment(
+                "enabled",
+                false,
+                "Whether to automatically enable machine learning recording on the first hit if the user has the required permission."
+        );
+        autoRecordPermission = autoRecordNode.getOrSetStringWithComment(
+                "permission",
+                "better.anticheat.ml.record",
+                """
+                        The permission required to automatically enable recording on first hit
+                        Only give this to players who are guaranteed not to cheat (like staff)."""
+        );
 
         // This is true in the default config but we set it to false here so people updating their server without knowing about the new config do not get messed up.
         final var entityTracker = settings.getConfigSectionOrCreate("entity-tracker");
-        entityTrackerFastAwaitingUpdate = entityTracker.getOrSetBoolean("fast-awaiting-update", false);
-        entityTrackerFastEntityBox = entityTracker.getOrSetBoolean("fast-entity-box", false);
+        entityTrackerFastAwaitingUpdate = entityTracker.getOrSetBooleanWithComment(
+                "fast-awaiting-update",
+                true,
+                """
+                        Changes the way the entity tracker handles ticking interpolation when new movements are in flight.
+                        This improves performance but may reduce strictness slightly."""
+        );
+        entityTrackerFastEntityBox = entityTracker.getOrSetBooleanWithComment(
+                "fast-entity-box",
+                false,
+                """
+                        Uses a new single box containing all other entity boxes instead of iterating over existing boxes when ray tracing.
+                        Is usually faster but may reduce strictness slightly."""
+        );
 
         loadML(settings);
         loadCookieAllocator(settings);
@@ -186,32 +360,34 @@ public class BetterAnticheat {
     }
 
     public void loadML(final ConfigSection baseConfig) {
-        final var mlNode = baseConfig.getConfigSectionOrCreate("ml");
-        final var mlEnabled = mlNode.getOrSetBoolean("enabled", false);
+        modelConfigs.clear();
+        final var mlNode = baseConfig.getConfigSectionOrCreateWithComment(
+                """
+                        NOTE: These features are currently highly experimental, and are released for development purposes only.
+                        DO NOT USE THEM IN PRODUCTION ENVIRONMENTS WITHOUT THOROUGH TESTING
+                        MAKING THIS FEATURE STABLE will likely require significant and diverse amounts of extra training data, which can be collected with the record commands.""",
+                "ml"
+        );
+        final var mlEnabled = mlNode.getOrSetBooleanWithComment("enabled", false, "Whether to enable ML combat features.");
+        if (!mlEnabled) return;
 
-        final var models = mlNode.getConfigSectionOrCreate("models");
+        boolean hasModels = mlNode.hasNode("models");
+        final var models = mlNode.getConfigSectionOrCreateWithComment(
+                "The list of models to use. Note that this does not update when the plugin is updated, so check the wiki for the latest recommended configuration, after upgrades.",
+                "models"
+        );
 
-        if (mlEnabled) {
-            this.modelConfigs.clear();
 
-            for (final var child : models.getChildren()) {
-                this.modelConfigs.put((String) child.getKey(), new ModelConfig(
-                        child.getOrSetString("display-name", "example-model"),
-                        child.getOrSetString("type", "model-type"),
-                        child.getOrSetInteger("slice", 1),
-                        child.getOrSetStringList("legit-dataset-names", Collections.emptyList()),
-                        child.getOrSetStringList("cheat-dataset-names", Collections.emptyList()),
-                        child.getOrSetBoolean("statistics", false),
-                        child.getOrSetBoolean("shrink", true),
-                        child.getOrSetInteger("samples", 10),
-                        child.getOrSetDouble("alert-threshold", 7.5),
-                        child.getOrSetDouble("mitigation-threshold", 6.0),
-                        child.getOrSetInteger("mitigation-only-ticks", 20),
-                        child.getOrSetInteger("tree-depth", 35),
-                        child.getOrSetInteger("node-size", 4),
-                        child
-                ));
+        if (!hasModels) {
+            for (final var defaultConfig : DEFAULT_ML_CONFIGS) {
+                models.setObject(ModelConfig.class, defaultConfig.getNode(), defaultConfig);
             }
+        }
+
+        for (final var child : models.getChildren()) {
+            Optional<ModelConfig> conf = models.getObject(ModelConfig.class, child.getKey());
+            if (conf.isEmpty()) continue;
+            modelConfigs.put((String) child.getKey(), conf.get());
         }
 
         this.modelConfigs.forEach((name, config) -> {
@@ -233,38 +409,98 @@ public class BetterAnticheat {
      * @param baseConfig The base configuration section.
      */
     public void loadCookieAllocator(final ConfigSection baseConfig) {
-        final var cookieNode = baseConfig.getConfigSection("cookie-allocator");
+        final var cookieNode = baseConfig.getConfigSectionOrCreate("cookie-allocator");
 
-        if (cookieNode == null) {
-            dataBridge.logInfo("No cookie allocator configuration found, using default sequential allocator");
-            this.cookieAllocatorConfig = CookieAllocatorConfig.createDefault();
-            return;
-        }
-
-        final var type = cookieNode.getOrSetString("type", "sequential");
-        final var parametersNode = cookieNode.getConfigSection("parameters");
+        final var type = cookieNode.getOrSetStringWithComment(
+                "type",
+                "sequential",
+                """
+                        The type of cookie ID allocator to use.
+                        Options: "sequential", "random", "timestamp", "file", "lyric\""""
+        );
+        final var parametersNode = cookieNode.getConfigSectionOrCreate("parameters");
 
         final Map<String, Object> parameters = new HashMap<>();
-        if (parametersNode != null) {
-            // For file-based allocator
-            parameters.put("filename", parametersNode.getOrSetString("filename", "cookie_sequences.txt"));
 
-            // For sequential allocator
-            parameters.put("startValue", parametersNode.getOrSetObject(Long.class, "startValue", 0L));
+        // For file-based allocator
+        parameters.put("filename", parametersNode.getOrSetStringWithComment(
+                "filename",
+                "cookie_sequences.txt",
+                """
+                        For "file" allocator:
+                        The name of the file containing cookie sequences. Default: alphabet.txt
+                        Files can be placed in src/main/resources/ (for inclusion in the plugin JAR)
+                        or in {BetterAnticheat.directory}/cookiesequence/ (for external loading)."""
+                )
+        );
+
+        // For sequential allocator
+        parameters.put("startValue", parametersNode.getOrSetObjectWithComment(
+                Long.class,
+                "startValue",
+                0L,
+                """
+                        For "sequential" allocator:
+                        The starting value for the sequential cookie IDs. Default: 0"""
+                )
+        );
 
             // For random allocator
-            parameters.put("cookieLength", parametersNode.getOrSetInteger("cookieLength", 8));
-            parameters.put("maxRetries", parametersNode.getOrSetInteger("maxRetries", 100));
+            parameters.put("cookieLength", parametersNode.getOrSetIntegerWithComment(
+                    "cookieLength",
+                    8,
+                    """
+                            For "random" allocator:
+                            The length of generated cookie IDs in bytes. Default: 8"""
+                    )
+            );
+            parameters.put("maxRetries", parametersNode.getOrSetIntegerWithComment(
+                    "maxRetries",
+                    100,
+                    "Maximum retries for ensuring uniqueness of random cookie IDs. Default: 100"
+                    )
+            );
 
             // For timestamp allocator
-            parameters.put("randomBytesLength", parametersNode.getOrSetInteger("randomBytesLength", 4));
+            parameters.put("randomBytesLength", parametersNode.getOrSetIntegerWithComment(
+                    "randomBytesLength",
+                    4,
+                    """
+                            For "timestamp" allocator:
+                            The number of random bytes to append to the timestamp. Default: 4"""
+                    )
+            );
 
             // For lyric allocator
-            parameters.put("artist", parametersNode.getOrSetString("artist", ""));
-
-            parameters.put("title", parametersNode.getOrSetString("title", ""));
-            parameters.put("maxLines", parametersNode.getOrSetInteger("maxLines", 0));
-        }
+            parameters.put("artist", parametersNode.getOrSetStringWithComment(
+                    "artist",
+                    "",
+                    """
+                            For "lyric" allocator, here are some songs that work well:
+                            
+                            Recommended #1: Artist: "Lana Del Rey", Song: "God Bless America - And All The Beautiful Women In It"
+                            Recommended #2: Artist: "2 Live Crew", Song: "The Fuck Shop"
+                            Recommended #3: Artist: "Metallica" - Song: "So What"
+                            Recommended #4: Artist: "Mao Ze" - Song: "Red Sun in the Sky"
+                            Recommended #5: Artist: "Rihanna" - Song: "Diamonds"
+                            
+                            The artist of the song for lyric cookies. Default: "\""""
+                    )
+            );
+            parameters.put("title", parametersNode.getOrSetStringWithComment(
+                    "title",
+                    "",
+                    """
+                            The title of the song for lyric cookies. Default: ""
+                            The song must have at least 50 lines of lyrics."""
+                    )
+            );
+            parameters.put("maxLines", parametersNode.getOrSetIntegerWithComment(
+                    "maxLines",
+                    0,
+                    "The maximum number of lyric lines to use (0 for all). Default: 0"
+                    )
+            );
 
         this.cookieAllocatorConfig = new CookieAllocatorConfig(type, parameters);
 
