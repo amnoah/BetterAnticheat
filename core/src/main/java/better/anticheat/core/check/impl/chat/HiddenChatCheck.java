@@ -44,7 +44,7 @@ public class HiddenChatCheck extends Check {
                             break;
                     }
                 } catch (final Exception e) {
-                    setEnabled(false);
+                    player.getChecks().remove(this);
                     return;
                 }
                 break;

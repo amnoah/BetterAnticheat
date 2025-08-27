@@ -178,7 +178,7 @@ public class CMLTracker extends Tracker {
 
             super.load(this.modelConfig.getConfigSection());
 
-            if (!isEnabled()) {
+            if (!getCheckConfig().isEnabled()) {
                 log.debug("[BetterAnticheat] [ML] {} is currently disabled", getName());
             }
 
@@ -186,7 +186,7 @@ public class CMLTracker extends Tracker {
         }
 
         public void handle(final double[][] data) {
-            if (!isEnabled())
+            if (!getCheckConfig().isEnabled())
                 return;
 
             synchronized (MODEL_LOCK) {

@@ -350,7 +350,9 @@ public class BetterAnticheat {
         loadML(settings);
         loadCookieAllocator(settings);
 
+        // This load order is important.
         punishmentManager.load();
+        checkManager.load();
         this.lamp = commandManager.load();
         playerManager.load();
 

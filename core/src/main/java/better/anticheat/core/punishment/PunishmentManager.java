@@ -224,7 +224,7 @@ public class PunishmentManager {
 
     public void runPunishments(Check check) {
         int checkVl = check.getVl();
-        for (final var group : check.getPunishmentGroups()) {
+        for (final var group : check.getCheckConfig().getPunishmentGroups()) {
             int groupVl = 0;
             for (final var violation : check.getPlayer().getViolations()) {
                 for (int groupNameHash : violation.getGroupNameHashs()) {

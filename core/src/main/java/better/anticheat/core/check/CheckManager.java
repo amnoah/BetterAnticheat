@@ -32,19 +32,25 @@ public class CheckManager {
 
     private final BetterAnticheat plugin;
 
+    private final Map<Class, Check> cachedChecksMap = new HashMap<>();
+
     /**
      * Initialize the CheckManager object.
      */
     public CheckManager(BetterAnticheat plugin) {
         this.plugin = plugin;
+        List<Check> cachedChecks = createChecks(null);
+        for (Check check : cachedChecks) {
+            cachedChecksMap.put(check.getClass(), check);
+        }
     }
 
     /**
-     * Retrieve a copy of checks for the given player.
+     * Retrieve a complete list of checks for the given player.
+     * Note: These checks will not have config settings loaded in.
      */
-    public List<Check> getChecks(Player player) {
-        // Create an initial copy of each check that needs to be distributed to players.
-        List<Check> checks = Arrays.asList(
+    public List<Check> createChecks(Player player) {
+        return Arrays.asList(
                 // Chat Checks
                 new HiddenChatCheck(plugin, player),
                 new ImpossibleCompletionCheck(plugin, player),
@@ -98,38 +104,59 @@ public class CheckManager {
                 new CursorPositionCheck(plugin, player),
                 new PlaceBlockFacePositionCheck(plugin, player)
         );
+    }
+
+    /**
+     * Retrieve a copy of checks for the given player. This is appropriate for player usage.
+     */
+    public List<Check> getChecksForPlayer(Player player) {
+        // Create an initial copy of each check that needs to be distributed to players.
+        List<Check> checks = createChecks(player);
 
         // Check what checks should be removed from the player's list.
         Iterator<Check> checkIterator = checks.iterator();
         while (checkIterator.hasNext()) {
             Check check = checkIterator.next();
 
-            // Filter by feature requirements (if they are present). If the player doesn't meet them, remove the check.
-            final var info = check.getClass().getAnnotation(CheckInfo.class);
-            if (info != null && info.requirements() != null) {
-                var requirements = info.requirements();
-                boolean ok = true;
-                for (final var req : requirements) {
-                    if (!req.matches(player)) {
-                        ok = false;
-                        break;
-                    }
-                }
+            // Verify that the player has the necessary client feature requirements to run the check.
 
-                if (!ok) {
-                    checkIterator.remove();
-                    continue;
+            boolean ok = true;
+            for (final var req : check.getFeatureRequirements()) {
+                if (!req.matches(player)) {
+                    ok = false;
+                    break;
                 }
             }
 
-            ConfigurationFile file = plugin.getConfigurationManager().getConfigurationFile(check.getConfig().toLowerCase() + ".conf");
-            ConfigSection node = file.getRoot();
-            node = node.getConfigSectionOrCreate(check.getCategory(), check.getName());
-            check.load(node);
+            if (!ok) {
+                checkIterator.remove();
+                continue;
+            }
 
-            if (!check.isEnabled()) checkIterator.remove();
+            // Grab the cached config for the check.
+            check.setCheckConfig(cachedChecksMap.get(check.getClass()).getCheckConfig());
+
+            // No use in keeping disabled checks.
+            if (!check.getCheckConfig().isEnabled()) checkIterator.remove();
         }
 
         return checks;
+    }
+
+    /**
+     * Load the check manager, caching the config settings for checks.
+     */
+    public void load() {
+        int enabled = 0;
+        for (Check check : cachedChecksMap.values()) {
+            ConfigurationFile file = plugin.getConfigurationManager().getConfigurationFile(check.getConfig().toLowerCase() + ".conf");
+            ConfigSection node = file.getRoot();
+            if (node == null) continue;
+            node = node.getConfigSectionOrCreate(check.getCategory(), check.getName());
+            check.load(node);
+            if (check.getCheckConfig().isEnabled()) enabled++;
+        }
+
+        plugin.getDataBridge().logInfo("Loaded " + cachedChecksMap.size() + " checks, with " + enabled + " being enabled.");
     }
 }

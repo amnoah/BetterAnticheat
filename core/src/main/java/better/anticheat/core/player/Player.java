@@ -103,7 +103,7 @@ public class Player implements Closeable {
         }
 
         for (Check check : this.checks) {
-            if (!check.isEnabled()) continue;
+            if (!check.getCheckConfig().isEnabled()) continue;
             check.handleReceivePlayPacket(event);
         }
     }
@@ -119,7 +119,7 @@ public class Player implements Closeable {
         this.actionTracker.handlePacketPlaySend(event);
 
         for (Check check : this.checks) {
-            if (!check.isEnabled()) continue;
+            if (!check.getCheckConfig().isEnabled()) continue;
             check.handleSendPlayPacket(event);
         }
     }
@@ -129,7 +129,7 @@ public class Player implements Closeable {
      */
 
     public void load() {
-        checks = plugin.getCheckManager().getChecks(this);
+        checks = plugin.getCheckManager().getChecksForPlayer(this);
 
         // Load CML generated checks.
         this.cmlTracker.onPlayerInit();

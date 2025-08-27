@@ -15,7 +15,7 @@ import java.util.Set;
  * It is noteworthy that initial loads operate on a lazy-load system. This means that configuration files will not be
  * loaded at all until they have been accessed for the first time. You may want to reconsider performing first access
  * on the netty thread as that may prevent unnecessary strain. After the initial load, you can re-cache all files by
- * calling the ConfigurationManager#reload function or a specific file by calling ConfigurationManager#reloadFile.
+ * calling the ConfigurationManager#load function or a specific file by calling ConfigurationManager#loadFile.
  * <p>
  * The last thing that is especially important to note is the "file" String. By default, BetterAnticheat will assume
  * that you are operating out of the anticheat's main directory. You can either stay here and define your file as the
