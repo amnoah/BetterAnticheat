@@ -13,7 +13,7 @@ import java.lang.annotation.Target;
  *
  * @CheckInfo( name = "Example",
  * category = "Combat",
- * parent = "newconfig",
+ * config = "newconfig.conf",
  * experimental = true,
  * requirements = { ClientFeatureRequirement.CLIENT_TICK_END }
  * )
@@ -27,10 +27,24 @@ public @interface CheckInfo {
      */
     String name();
 
+    /**
+     * Return the category that this check belongs to.
+     * Should typically be the folder of this check.
+     */
     String category();
 
-    String config() default "checks";
+    /**
+     * This refers to the configuration file that this check should be saved in and loaded from. It should include a
+     * file extension (note that it will be saved and loaded as a hocon file regardless of the extension) and should not
+     * include special characters or spacing characters. It does not need to be a file that already exists as
+     * BetterAnticheat will generate it for you.
+     * By default, the value is "checks.conf" to refer to the "checks.conf" file.
+     */
+    String config() default "checks.conf";
 
+    /**
+     * Return whether this check is experimental. If it is, it should be used with caution.
+     */
     boolean experimental() default false;
 
     /**

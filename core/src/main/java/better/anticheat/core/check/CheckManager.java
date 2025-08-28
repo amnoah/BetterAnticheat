@@ -149,7 +149,7 @@ public class CheckManager {
     public void load() {
         int enabled = 0;
         for (Check check : cachedChecksMap.values()) {
-            ConfigurationFile file = plugin.getConfigurationManager().getConfigurationFile(check.getConfig().toLowerCase() + ".conf");
+            ConfigurationFile file = plugin.getConfigurationManager().getConfigurationFile(check.getConfig());
             ConfigSection node = file.getRoot();
             if (node == null) continue;
             node = node.getConfigSectionOrCreate(check.getCategory(), check.getName());
