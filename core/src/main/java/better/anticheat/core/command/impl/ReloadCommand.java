@@ -3,8 +3,9 @@ package better.anticheat.core.command.impl;
 import better.anticheat.core.BetterAnticheat;
 import better.anticheat.core.command.Command;
 import better.anticheat.core.command.CommandInfo;
+import better.anticheat.core.configuration.ConfigSection;
+import better.anticheat.core.util.ChatUtil;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.TextColor;
 import revxrsal.commands.annotation.CommandPlaceholder;
 import revxrsal.commands.command.CommandActor;
 
@@ -19,6 +20,8 @@ import revxrsal.commands.command.CommandActor;
 @CommandInfo(name = "reload", parent = BACCommand.class)
 public class ReloadCommand extends Command {
 
+    private String reloadMessage;
+
     public ReloadCommand(BetterAnticheat plugin) {
         super(plugin);
     }
@@ -26,7 +29,17 @@ public class ReloadCommand extends Command {
     @CommandPlaceholder
     public void onCommand(CommandActor actor) {
         if (!hasPermission(actor)) return;
-        sendReply(actor, Component.text("Reloading BetterAnticheat!").color(TextColor.color(0x00FF00)));
+        sendReply(actor, Component.text(ChatUtil.translateColors(reloadMessage)));
         plugin.load();
+    }
+
+    @Override
+    public void load(ConfigSection section) {
+        super.load(section);
+        reloadMessage = ChatUtil.translateColors(section.getOrSetStringWithComment(
+                "message",
+                "&aReloading BetterAnticheat!",
+                "This is the message that will be sent to users when a reload command is send."
+        ));
     }
 }
