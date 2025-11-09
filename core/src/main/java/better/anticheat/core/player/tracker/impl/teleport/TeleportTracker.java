@@ -43,7 +43,7 @@ public class TeleportTracker extends Tracker {
         if (!WrapperPlayClientPlayerFlying.isFlying(event.getPacketType())) return;
         final var wrapper = new WrapperPlayClientPlayerFlying(event);
 
-        if (supportsTickEnd) handleTickEnd();
+        if (!supportsTickEnd) handleTickEnd();
 
         if (wrapper.hasPositionChanged()) positionThisTick = true;
 
