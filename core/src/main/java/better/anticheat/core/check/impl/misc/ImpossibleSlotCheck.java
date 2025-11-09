@@ -3,6 +3,7 @@ package better.anticheat.core.check.impl.misc;
 import better.anticheat.core.BetterAnticheat;
 import better.anticheat.core.check.Check;
 import better.anticheat.core.check.CheckInfo;
+import better.anticheat.core.player.Player;
 import com.github.retrooper.packetevents.event.simple.PacketPlayReceiveEvent;
 import com.github.retrooper.packetevents.protocol.packettype.PacketType;
 import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientHeldItemChange;
@@ -13,8 +14,8 @@ import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientHe
 @CheckInfo(name = "ImpossibleSlot", category = "misc")
 public class ImpossibleSlotCheck extends Check {
 
-    public ImpossibleSlotCheck(BetterAnticheat plugin) {
-        super(plugin);
+    public ImpossibleSlotCheck(BetterAnticheat plugin, Player player) {
+        super(plugin, player);
     }
 
     @Override

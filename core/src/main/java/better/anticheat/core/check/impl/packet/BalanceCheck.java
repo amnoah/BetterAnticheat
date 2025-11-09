@@ -2,10 +2,13 @@ package better.anticheat.core.check.impl.packet;
 
 import better.anticheat.core.BetterAnticheat;
 import better.anticheat.core.check.Check;
+import better.anticheat.core.check.CheckConfig;
 import better.anticheat.core.check.CheckInfo;
 import better.anticheat.core.check.ClientFeatureRequirement;
 import better.anticheat.core.configuration.ConfigSection;
+import better.anticheat.core.player.Player;
 import com.github.retrooper.packetevents.event.simple.PacketPlayReceiveEvent;
+import lombok.Getter;
 
 /**
  * This check looks for game speed modifications and potentially artificial packets, like in Timer and Blink cheats.
@@ -18,10 +21,9 @@ import com.github.retrooper.packetevents.event.simple.PacketPlayReceiveEvent;
 public class BalanceCheck extends Check {
 
     private long lastTick = -1, balance = 0;
-    private long maxBalance, minBalance;
 
-    public BalanceCheck(BetterAnticheat plugin) {
-        super(plugin);
+    public BalanceCheck(BetterAnticheat plugin, Player player) {
+        super(plugin, player);
     }
 
     @Override
@@ -66,9 +68,9 @@ public class BalanceCheck extends Check {
 
                 balance += 50;
                 balance -= (tick - lastTick);
-                balance = Math.max(balance, minBalance);
+                balance = Math.max(balance, ((BalanceCheckConfig) getCheckConfig()).getMinBalance());
 
-                if (balance > maxBalance) {
+                if (balance > ((BalanceCheckConfig) getCheckConfig()).getMaxBalance()) {
                     fail(balance);
                     balance = 0;
                 }
@@ -80,31 +82,19 @@ public class BalanceCheck extends Check {
     }
 
     @Override
-    public boolean load(ConfigSection section) {
-        boolean modified = super.load(section);
-
-        // Fetch max balance.
-        if (!section.hasNode("max-balance")) {
-            section.setObject(Integer.class, "max-balance", 300);
-            modified = true;
-        }
-        maxBalance = section.getObject(Integer.class, "max-balance", 300);
-
-        // Fetch max balance.
-        if (!section.hasNode("min-balance")) {
-            section.setObject(Integer.class, "min-balance", -3000);
-            modified = true;
-        }
-        minBalance = section.getObject(Integer.class, "min-balance", -3000);
-
-        return modified;
+    public void load(ConfigSection section) {
+        setCheckConfig(new BalanceCheckConfig(plugin, section, getCategory(), getName()));
     }
 
-    @Override
-    public void load() {
-        super.load();
-        BalanceCheck balanceCheck = (BalanceCheck) reference;
-        maxBalance = balanceCheck.maxBalance;
-        minBalance = balanceCheck.minBalance;
+    @Getter
+    public static class BalanceCheckConfig extends CheckConfig {
+
+        private final int maxBalance, minBalance;
+
+        public BalanceCheckConfig(BetterAnticheat plugin, ConfigSection section, String category, String name) {
+            super(plugin, section, category, name);
+            maxBalance = section.getOrSetIntegerWithComment("max-balance", 300, "The max MS a client can get ahead before it flags.");
+            minBalance = section.getOrSetIntegerWithComment("min-balance", -3000, "The furthest a client can be accounted for lagging behind.");
+        }
     }
 }

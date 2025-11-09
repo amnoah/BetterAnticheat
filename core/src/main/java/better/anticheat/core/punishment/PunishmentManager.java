@@ -22,20 +22,179 @@ public class PunishmentManager {
 
     public void load() {
         punishmentGroups.clear();
-        ConfigSection section = plugin.getFile("settings.yml").getRoot().getConfigSection("punishment-groups");
-        if (section == null) {
-            plugin.getDataBridge().logWarning("Punishment groups section not found in settings.yml!");
-            return;
-        }
+        ConfigSection section = plugin.getConfigurationManager().getConfigurationFile("settings.conf").getRoot();
+        if (section == null) return;
+        section = section.getConfigSectionOrCreateWithComment(
+                """
+                        Configure the punishments per group instead of per check, in order to reduce the total number of punish configurations you need to make.
+                        Each check can be assigned many groups, and each group can have many punishments.
+                        Available Placeholders:
+                        %type% - The check that was failed.
+                        %username% - The username of the player who failed the check.
+                        %vl% - The amount of times this player has failed the check.
+                        Punishment actions:
+                        [mitigate <ticks>] - Mitigates the player for a certain amount of ticks.
+                        [webhook] - Sends a webhook message.""",
+                "punishment-groups"
+        );
 
         if (!section.hasNode("default")) {
-            plugin.getDataBridge().logWarning("Default punishment group not found in settings.yml! Please add it back.");
+            final var defaultNode = section.getConfigSectionOrCreate("default");
+            defaultNode.getOrSetStringList(
+                    "per-group-punishments",
+                    List.of("10:say %username% has accumulated 10 total VL!")
+            );
+            defaultNode.getOrSetStringList(
+                    "per-check-punishments",
+                    Arrays.asList(
+                            "1:say %username% would be kicked for %type%!",
+                            "5:say %username% would be banned for %type%!",
+                            "10:[webhook]"
+                    )
+            );
+        }
+        if (!section.hasNode("ml-checks")) {
+            final var defaultNode = section.getConfigSectionOrCreate("ml-checks");
+            defaultNode.getOrSetStringList(
+                    "per-group-punishments",
+                    List.of()
+            );
+            defaultNode.getOrSetStringList(
+                    "per-check-punishments",
+                    Arrays.asList(
+                            "1:[mitigate 20]",
+                            "5:[webhook]"
+                    )
+            );
+        }
+        if (!section.hasNode("chat")) {
+            final var defaultNode = section.getConfigSectionOrCreate("chat");
+            defaultNode.getOrSetStringList(
+                    "per-group-punishments",
+                    List.of("10:say %username% has accumulated 10 total VL!")
+            );
+            defaultNode.getOrSetStringList(
+                    "per-check-punishments",
+                    Arrays.asList(
+                            "1:say %username% would be kicked for %type%!",
+                            "5:say %username% would be banned for %type%!",
+                            "10:[webhook]"
+                    )
+            );
+        }
+        if (!section.hasNode("combat")) {
+            final var defaultNode = section.getConfigSectionOrCreate("combat");
+            defaultNode.getOrSetStringList(
+                    "per-group-punishments",
+                    List.of("10:say %username% has accumulated 10 total VL!")
+            );
+            defaultNode.getOrSetStringList(
+                    "per-check-punishments",
+                    Arrays.asList(
+                            "1:say %username% would be kicked for %type%!",
+                            "5:[mitigate 20]",
+                            "5:say %username% would be banned for %type%!",
+                            "10:[webhook]"
+                    )
+            );
+        }
+        if (!section.hasNode("dig")) {
+            final var defaultNode = section.getConfigSectionOrCreate("dig");
+            defaultNode.getOrSetStringList(
+                    "per-group-punishments",
+                    List.of("10:say %username% has accumulated 10 total VL!")
+            );
+            defaultNode.getOrSetStringList(
+                    "per-check-punishments",
+                    Arrays.asList(
+                            "1:say %username% would be kicked for %type%!",
+                            "5:say %username% would be banned for %type%!",
+                            "10:[webhook]"
+                    )
+            );
+        }
+        if (!section.hasNode("flying")) {
+            final var defaultNode = section.getConfigSectionOrCreate("flying");
+            defaultNode.getOrSetStringList(
+                    "per-group-punishments",
+                    List.of("10:say %username% has accumulated 10 total VL!")
+            );
+            defaultNode.getOrSetStringList(
+                    "per-check-punishments",
+                    Arrays.asList(
+                            "1:say %username% would be kicked for %type%!",
+                            "5:say %username% would be banned for %type%!",
+                            "10:[webhook]"
+                    )
+            );
+        }
+        if (!section.hasNode("heuristic")) {
+            final var defaultNode = section.getConfigSectionOrCreate("heuristic");
+            defaultNode.getOrSetStringList(
+                    "per-group-punishments",
+                    List.of("10:say %username% has accumulated 10 total VL!")
+            );
+            defaultNode.getOrSetStringList(
+                    "per-check-punishments",
+                    Arrays.asList(
+                            "1:say %username% would be kicked for %type%!",
+                            "5:[mitigate 20]",
+                            "5:say %username% would be banned for %type%!",
+                            "10:[webhook]"
+                    )
+            );
+        }
+        if (!section.hasNode("misc")) {
+            final var defaultNode = section.getConfigSectionOrCreate("misc");
+            defaultNode.getOrSetStringList(
+                    "per-group-punishments",
+                    List.of("10:say %username% has accumulated 10 total VL!")
+            );
+            defaultNode.getOrSetStringList(
+                    "per-check-punishments",
+                    Arrays.asList(
+                            "1:say %username% would be kicked for %type%!",
+                            "5:say %username% would be banned for %type%!",
+                            "10:[webhook]"
+                    )
+            );
+        }
+        if (!section.hasNode("packet")) {
+            final var defaultNode = section.getConfigSectionOrCreate("packet");
+            defaultNode.getOrSetStringList(
+                    "per-group-punishments",
+                    List.of("10:say %username% has accumulated 10 total VL!")
+            );
+            defaultNode.getOrSetStringList(
+                    "per-check-punishments",
+                    Arrays.asList(
+                            "1:say %username% would be kicked for %type%!",
+                            "5:say %username% would be banned for %type%!",
+                            "10:[webhook]"
+                    )
+            );
+        }
+        if (!section.hasNode("place")) {
+            final var defaultNode = section.getConfigSectionOrCreate("place");
+            defaultNode.getOrSetStringList(
+                    "per-group-punishments",
+                    List.of("10:say %username% has accumulated 10 total VL!")
+            );
+            defaultNode.getOrSetStringList(
+                    "per-check-punishments",
+                    Arrays.asList(
+                            "1:say %username% would be kicked for %type%!",
+                            "5:[mitigate 20]",
+                            "5:say %username% would be banned for %type%!",
+                            "10:[webhook]"
+                    )
+            );
         }
 
         for (ConfigSection groupSection : section.getChildren()) {
-            String groupName = groupSection.getKey();
-            Map<Integer, List<String>> perGroupPunishments = parsePunishments(groupSection.getList(String.class, "per-group-punishments"), groupName);
-            Map<Integer, List<String>> perCheckPunishments = parsePunishments(groupSection.getList(String.class, "per-check-punishments"), groupName);
+            String groupName = (String) groupSection.getKey();
+            Map<Integer, List<String>> perGroupPunishments = parsePunishments(groupSection.getOrSetStringList("per-group-punishments", Collections.emptyList()), groupName);
+            Map<Integer, List<String>> perCheckPunishments = parsePunishments(groupSection.getOrSetStringList("per-check-punishments", Collections.emptyList()), groupName);
             punishmentGroups.put(groupName, new PunishmentGroup(groupName, perGroupPunishments, perCheckPunishments));
         }
     }
@@ -65,7 +224,7 @@ public class PunishmentManager {
 
     public void runPunishments(Check check, Object debug) {
         int checkVl = check.getVl();
-        for (final var group : check.getPunishmentGroups()) {
+        for (final var group : check.getCheckConfig().getPunishmentGroups()) {
             int groupVl = 0;
             for (final var violation : check.getPlayer().getViolations()) {
                 for (int groupNameHash : violation.getGroupNameHashs()) {

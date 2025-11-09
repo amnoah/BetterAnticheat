@@ -4,6 +4,7 @@ import better.anticheat.core.BetterAnticheat;
 import better.anticheat.core.check.Check;
 import better.anticheat.core.check.CheckInfo;
 import better.anticheat.core.check.ClientFeatureRequirement;
+import better.anticheat.core.player.Player;
 import com.github.retrooper.packetevents.event.simple.PacketPlayReceiveEvent;
 import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientPlayerDigging;
 
@@ -11,8 +12,8 @@ import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientPl
 public class NoSwingDigCheck extends Check {
     private boolean started = false, swungThisTick = false, constantSwinging = false;
 
-    public NoSwingDigCheck(BetterAnticheat plugin) {
-        super(plugin);
+    public NoSwingDigCheck(BetterAnticheat plugin, Player player) {
+        super(plugin, player);
     }
 
     @Override

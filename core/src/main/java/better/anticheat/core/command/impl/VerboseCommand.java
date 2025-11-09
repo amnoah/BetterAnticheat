@@ -12,6 +12,7 @@ import revxrsal.commands.annotation.Optional;
 import revxrsal.commands.command.CommandActor;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -52,19 +53,18 @@ public class VerboseCommand extends Command {
     }
 
     @Override
-    public boolean load(ConfigSection section) {
-        boolean modified = super.load(section);
+    public void load(ConfigSection section) {
+        super.load(section);
 
-        if (!section.hasNode("change-others-permissions")) {
-            List<String> defaultOthers = new ArrayList<>();
-            defaultOthers.add("better.anticheat.alerts.others");
-            defaultOthers.add("example.permission.node");
-            section.setList(String.class, "change-others-permissions", defaultOthers);
-        }
-        List<String> changeOthersPermsList = section.getList(String.class, "change-others-permissions");
+        List<String> changeOthersPermsList = section.getOrSetStringListWithComment(
+                "change-others-permissions",
+                Arrays.asList(
+                        "better.anticheat.verbose.others",
+                        "example.permission.node"
+                ),
+                "If the player has any of these permissions, they can set verbose for other players."
+        );
         changeOthersPerms = new String[changeOthersPermsList.size()];
         for (int i = 0; i < changeOthersPermsList.size(); i++) changeOthersPerms[i] = changeOthersPermsList.get(i);
-
-        return modified;
     }
 }

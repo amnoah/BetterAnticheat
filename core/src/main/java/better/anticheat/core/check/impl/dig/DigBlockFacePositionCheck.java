@@ -3,6 +3,7 @@ package better.anticheat.core.check.impl.dig;
 import better.anticheat.core.BetterAnticheat;
 import better.anticheat.core.check.Check;
 import better.anticheat.core.check.CheckInfo;
+import better.anticheat.core.player.Player;
 import com.github.retrooper.packetevents.event.simple.PacketPlayReceiveEvent;
 import com.github.retrooper.packetevents.protocol.packettype.PacketType;
 import com.github.retrooper.packetevents.util.Vector3d;
@@ -18,8 +19,8 @@ public class DigBlockFacePositionCheck extends Check {
 
     private Vector3d position = null;
 
-    public DigBlockFacePositionCheck(BetterAnticheat plugin) {
-        super(plugin);
+    public DigBlockFacePositionCheck(BetterAnticheat plugin, Player player) {
+        super(plugin, player);
     }
 
     @Override

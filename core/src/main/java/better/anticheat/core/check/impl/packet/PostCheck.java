@@ -4,6 +4,7 @@ import better.anticheat.core.BetterAnticheat;
 import better.anticheat.core.check.Check;
 import better.anticheat.core.check.CheckInfo;
 import better.anticheat.core.check.ClientFeatureRequirement;
+import better.anticheat.core.player.Player;
 import com.github.retrooper.packetevents.event.simple.PacketPlayReceiveEvent;
 import com.github.retrooper.packetevents.protocol.packettype.PacketType;
 
@@ -25,8 +26,8 @@ public class PostCheck extends Check {
     private boolean sentFlying = false, held = true, login = false;
     private final List<PacketType.Play.Client> post = new ArrayList<>();
 
-    public PostCheck(BetterAnticheat plugin) {
-        super(plugin);
+    public PostCheck(BetterAnticheat plugin, Player player) {
+        super(plugin, player);
     }
 
     @Override

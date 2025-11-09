@@ -101,7 +101,7 @@ public class Player implements Closeable {
         this.mitigationTracker.handlePacketPlayReceive(event);
 
         for (Check check : this.checks) {
-            if (!check.isEnabled()) continue;
+            if (!check.getCheckConfig().isEnabled()) continue;
             check.handleReceivePlayPacket(event);
         }
     }
@@ -117,7 +117,7 @@ public class Player implements Closeable {
         this.actionTracker.handlePacketPlaySend(event);
 
         for (Check check : this.checks) {
-            if (!check.isEnabled()) continue;
+            if (!check.getCheckConfig().isEnabled()) continue;
             check.handleSendPlayPacket(event);
         }
     }
@@ -127,8 +127,7 @@ public class Player implements Closeable {
      */
 
     public void load() {
-        if (checks == null) checks = BetterAnticheat.getInstance().getCheckManager().getChecks(this);
-        else for (Check check : checks) check.load();
+        checks = plugin.getCheckManager().getChecksForPlayer(this);
 
         // Load CML generated checks.
         this.cmlTracker.onPlayerInit();

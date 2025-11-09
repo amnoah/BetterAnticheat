@@ -29,28 +29,21 @@ import java.util.List;
  * 5. The fail method indicates that a player is cheating.
  * 6. If you override the config handling, you must super.load()!
  */
-public abstract class Check implements Cloneable {
+public abstract class Check {
 
     protected BetterAnticheat plugin;
-    protected Check reference;
     @Getter
     protected Player player;
 
-    @Getter
-    @Setter
+    @Getter @Setter
     private String name, category, config;
     @Getter
     private final boolean experimental;
+    @Getter
+    private final ClientFeatureRequirement[] featureRequirements;
 
-    @Getter
-    @Setter
-    private boolean enabled = false;
-    private int alertVL = 10, verboseVL = 1;
-    private int decay = -1;
-    private int combatMitigationTicksOnAlert = 0;
-    private int combatMitigationTicksOnVerbose = 0;
-    @Getter
-    private final List<PunishmentGroup> punishmentGroups = new FastObjectArrayList<>();
+    @Getter @Setter
+    private CheckConfig checkConfig;
 
     @Getter
     private int vl = 0;
@@ -71,14 +64,16 @@ public abstract class Check implements Cloneable {
         category = info.category();
         config = info.config();
         experimental = info.experimental();
+        featureRequirements = info.requirements();
     }
 
     /**
      * Construct the check via info provided in CheckInfo annotation.
      * This is the recommended approach but requires a @CheckInfo annotation on implementations.
      */
-    public Check(BetterAnticheat plugin) {
+    public Check(BetterAnticheat plugin, Player player) {
         this.plugin = plugin;
+        this.player = player;
         CheckInfo info = this.getClass().getAnnotation(CheckInfo.class);
         if (info == null) throw new InvalidParameterException("No CheckInfo annotation on class: " + this.getClass().getName() + "!");
 
@@ -87,58 +82,26 @@ public abstract class Check implements Cloneable {
         category = info.category();
         config = info.config();
         experimental = info.experimental();
+        featureRequirements = info.requirements();
     }
 
     /**
      * Construct the check via parameters.
      */
-    public Check(BetterAnticheat plugin, String name, String category, String config, boolean experimental) {
+    public Check(BetterAnticheat plugin, Player player, String name, String category, String config, boolean experimental, ClientFeatureRequirement... requirements) {
         this.plugin = plugin;
+        this.player = player;
         this.name = name;
         this.category = category;
         this.config = config;
         this.experimental = experimental;
+        this.featureRequirements = requirements;
     }
 
     public void handleReceivePlayPacket(PacketPlayReceiveEvent event) {
     }
 
     public void handleSendPlayPacket(PacketPlaySendEvent event) {
-    }
-
-    /*
-     * Check set up.
-     */
-
-    public void load() {
-        if (reference == null) return;
-        enabled = reference.enabled;
-        alertVL = reference.alertVL;
-        vl = reference.vl;
-    }
-
-    public synchronized Check initialCopy(final Player player, final ThreadSafeFory copier) {
-        final var plugin = this.plugin;
-        this.plugin = null;
-
-        final var check = copier.copy(this);
-
-        this.plugin = plugin;
-        check.plugin = plugin;
-
-        check.reference = this;
-        check.player = player;
-        check.load();
-        return check;
-    }
-
-    @Override
-    protected Check clone() {
-        try {
-            return (Check) super.clone();
-        } catch (CloneNotSupportedException e) {
-            throw new AssertionError();
-        }
     }
 
     /*
@@ -166,14 +129,14 @@ public abstract class Check implements Cloneable {
         final long currentMS = System.currentTimeMillis();
         int newVl = 0;
 
-        final var punishmentGroupHashs = new int[punishmentGroups.size()];
-        for (int i = 0; i < punishmentGroups.size(); i++) {
-            punishmentGroupHashs[i] = punishmentGroups.get(i).getNameHash();
+        final var punishmentGroupHashs = new int[checkConfig.getPunishmentGroups().size()];
+        for (int i = 0; i < checkConfig.getPunishmentGroups().size(); i++) {
+            punishmentGroupHashs[i] = checkConfig.getPunishmentGroups().get(i).getNameHash();
         }
         player.getViolations().add(new Violation(this, punishmentGroupHashs, currentMS, 1));
 
-        if (decay > 0) {
-            final long minCreationTime = currentMS - decay;
+        if (checkConfig.getDecay() > 0) {
+            final long minCreationTime = currentMS - checkConfig.getDecay();
             for (final var it = player.getViolations().iterator(); it.hasNext(); ) {
                 final var v = it.next();
                 if (v.getCreationTime() < minCreationTime && v.getCheck() == this) {
@@ -199,10 +162,10 @@ public abstract class Check implements Cloneable {
         final var deltaVerboseMS = currentMS - lastVerboseMS;
         final var verboseLimit = this.plugin.getAlertCooldown() / this.plugin.getVerboseCooldownDivisor();
 
-        if (vl >= alertVL && !verboseOnly) {
-            player.getMitigationTracker().getMitigationTicks().increment(combatMitigationTicksOnAlert);
-        } else if (vl >= verboseVL) {
-            player.getMitigationTracker().getMitigationTicks().increment(combatMitigationTicksOnVerbose);
+        if (vl >= checkConfig.getAlertVL() && !verboseOnly) {
+            player.getMitigationTracker().getMitigationTicks().increment(checkConfig.getCombatMitigationTicksOnAlert());
+        } else if (vl >= checkConfig.getVerboseVL()) {
+            player.getMitigationTracker().getMitigationTicks().increment(checkConfig.getCombatMitigationTicksOnVerbose());
         }
 
         /*
@@ -211,7 +174,7 @@ public abstract class Check implements Cloneable {
          * 2. Ensure vl is high enough to alert (vl >= alertVL)
          * 3. Ensure the anti-spam cooldown has elapsed (elapsed >= alertCooldown)
          */
-        if (alertVL != -1 && vl >= Math.min(alertVL, verboseVL) && smallestDeltaMS >= verboseLimit) {
+        if (checkConfig.getAlertVL() != -1 && vl >= Math.min(checkConfig.getAlertVL(), checkConfig.getVerboseVL()) && smallestDeltaMS >= verboseLimit) {
             var message = this.plugin.getAlertMessage();
             if (!message.isEmpty()) {
                 // Build the basic message body.
@@ -243,12 +206,12 @@ public abstract class Check implements Cloneable {
                 else {
                     // Now we know we are sending to staff, we need to determine if we use a verbose, or an alert.
                     // First, we try a verbose, if alert is too low, or cooldown has not elapsed. Otherwise, alert.
-                    if (this.vl >= this.verboseVL && (this.vl < this.alertVL || verboseOnly ||
+                    if (this.vl >= this.checkConfig.getVerboseVL() && (this.vl < this.checkConfig.getAlertVL() || verboseOnly ||
                             deltaAlertMS < this.plugin.getAlertCooldown()) &&
                             deltaVerboseMS >= verboseLimit) {
                         this.plugin.getPlayerManager().sendVerbose(finalMessage);
                         this.lastVerboseMS = currentMS;
-                    } else if (this.vl >= this.alertVL && deltaAlertMS >= this.plugin.getAlertCooldown() &&
+                    } else if (this.vl >= this.checkConfig.getAlertVL() && deltaAlertMS >= this.plugin.getAlertCooldown() &&
                             !verboseOnly) {
                         this.plugin.getPlayerManager().sendAlert(finalMessage);
                         this.lastAlertMS = currentMS;
@@ -270,99 +233,9 @@ public abstract class Check implements Cloneable {
     }
 
     /**
-     *
+     * Save the settings for the check.
      */
-    public boolean load(ConfigSection section) {
-        if (section == null) {
-            enabled = false;
-            return false;
-        }
-
-        boolean modified = false;
-
-        // Fetch enabled status.
-        if (!section.hasNode("enabled")) {
-            section.setObject(Boolean.class, "enabled", true);
-            modified = true;
-        }
-        enabled = section.getObject(Boolean.class, "enabled", true);
-
-        // No use in wasting more time loading.
-        if (!enabled) return modified;
-
-        // Fetch alertvl.
-        if (!section.hasNode("alert-vl")) {
-            section.setObject(Integer.class, "alert-vl", 1);
-            modified = true;
-        }
-        alertVL = section.getObject(Integer.class, "alert-vl", 5);
-
-        if (!section.hasNode("verbose-vl")) {
-            section.setObject(Integer.class, "verbose-vl", 1);
-            modified = true;
-        }
-        verboseVL = section.getObject(Integer.class, "verbose-vl", 1);
-
-        if (!section.hasNode("decay")) {
-            section.setObject(Integer.class, "decay", 1200000);
-            modified = true;
-        }
-        decay = section.getObject(Integer.class, "decay", 1200000);
-
-        if (!section.hasNode("combat-mitigation-ticks-on-alert")) {
-            final var lowerCategory = category.toLowerCase();
-            final var lowerName = name.toLowerCase();
-            final var isCombatAdjacent = lowerCategory.contains("combat") || lowerCategory.contains("place")
-                    || lowerCategory.contains("heuristic") || lowerName.contains("aim");
-            section.setObject(Integer.class, "combat-mitigation-ticks-on-alert",
-                    isCombatAdjacent ? 40 : 0);
-            modified = true;
-        }
-        if (!section.hasNode("combat-mitigation-ticks-on-verbose")) {
-            final var lowerCategory = category.toLowerCase();
-            final var lowerName = name.toLowerCase();
-            final var isCombatAdjacent = lowerCategory.contains("combat") || lowerCategory.contains("place")
-                    || lowerCategory.contains("heuristic") || lowerName.contains("aim");
-            section.setObject(Integer.class, "combat-mitigation-ticks-on-verbose",
-                    isCombatAdjacent ? 5 : 0);
-            modified = true;
-        }
-        combatMitigationTicksOnAlert = section.getObject(Integer.class, "combat-mitigation-ticks-on-alert", 20);
-        combatMitigationTicksOnVerbose = section.getObject(Integer.class, "combat-mitigation-ticks-on-verbose", 5);
-
-        if (!section.hasNode("punishment-groups")) {
-            List<String> groups = new ArrayList<>();
-            if (plugin.getPunishmentManager().getPunishmentGroup(category) != null) {
-                groups.add(category);
-            } else {
-                groups.add("default");
-
-                if (plugin.getPunishmentManager().getPunishmentGroup("default") == null) {
-                    plugin.getDataBridge().logWarning("Punishment group 'default' does not exist. The " + name + " check will not have any punishments.");
-                }
-            }
-            section.setList(String.class, "punishment-groups", groups);
-            modified = true;
-        }
-        final var punishmentGroupNames = section.getList(String.class, "punishment-groups");
-
-        punishmentGroups.clear();
-        for (final var groupName : punishmentGroupNames) {
-            final var group = plugin.getPunishmentManager().getPunishmentGroup(groupName);
-            if (group != null) {
-                punishmentGroups.add(group);
-            } else {
-                plugin.getDataBridge().logWarning("Punishment group '" + groupName + "' does not exist. The " + name + " check will not have any punishments.");
-            }
-        }
-
-
-        // Remove old sections.
-        if (section.hasNode("punishments")) {
-            section.removeNode("punishments");
-            modified = true;
-        }
-
-        return modified;
+    public void load(ConfigSection section) {
+        checkConfig = new CheckConfig(plugin, section, category, name);
     }
 }

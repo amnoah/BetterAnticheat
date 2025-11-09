@@ -29,12 +29,13 @@ public @interface CommandInfo {
     String name();
 
     /**
-     * This refers to the configuration file that this command should be saved in and loaded from. It should not include
-     * the file extension and should not include special characters or spacing characters. It does not need to be a
-     * file that already exists as BetterAnticheat will generate it for you. By default, the value is "commands" to
-     * refer to the "commands.yml" file.
+     * This refers to the configuration file that this command should be saved in and loaded from. It should include a
+     * file extension (note that it will be saved and loaded as a hocon file regardless of the extension) and should not
+     * include special characters or spacing characters. It does not need to be a file that already exists as
+     * BetterAnticheat will generate it for you.
+     * By default, the value is "commands.conf" to refer to the "commands.conf" file.
      */
-    String config() default "commands";
+    String config() default "commands.conf";
 
     /**
      * During load, the CheckManager will attempt to set the first object of this type that it can find as the parent of

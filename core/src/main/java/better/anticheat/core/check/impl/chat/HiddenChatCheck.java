@@ -3,6 +3,7 @@ package better.anticheat.core.check.impl.chat;
 import better.anticheat.core.BetterAnticheat;
 import better.anticheat.core.check.Check;
 import better.anticheat.core.check.CheckInfo;
+import better.anticheat.core.player.Player;
 import com.github.retrooper.packetevents.event.simple.PacketPlayReceiveEvent;
 import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientSettings;
 
@@ -14,8 +15,8 @@ public class HiddenChatCheck extends Check {
 
     private boolean canChat = true, initalFlag = false;
 
-    public HiddenChatCheck(BetterAnticheat plugin) {
-        super(plugin);
+    public HiddenChatCheck(BetterAnticheat plugin, Player player) {
+        super(plugin, player);
     }
 
     @Override
@@ -43,7 +44,7 @@ public class HiddenChatCheck extends Check {
                             break;
                     }
                 } catch (final Exception e) {
-                    setEnabled(false);
+                    player.getChecks().remove(this);
                     return;
                 }
                 break;

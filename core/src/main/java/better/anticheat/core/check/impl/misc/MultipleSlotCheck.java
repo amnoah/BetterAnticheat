@@ -4,6 +4,7 @@ import better.anticheat.core.BetterAnticheat;
 import better.anticheat.core.check.Check;
 import better.anticheat.core.check.CheckInfo;
 import better.anticheat.core.check.ClientFeatureRequirement;
+import better.anticheat.core.player.Player;
 import com.github.retrooper.packetevents.event.simple.PacketPlayReceiveEvent;
 
 /**
@@ -14,8 +15,8 @@ public class MultipleSlotCheck extends Check {
 
     private boolean change = false;
 
-    public MultipleSlotCheck(BetterAnticheat plugin) {
-        super(plugin);
+    public MultipleSlotCheck(BetterAnticheat plugin, Player player) {
+        super(plugin, player);
     }
 
     @Override

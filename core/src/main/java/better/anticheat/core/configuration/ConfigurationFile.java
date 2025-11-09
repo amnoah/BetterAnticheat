@@ -1,61 +1,57 @@
 package better.anticheat.core.configuration;
 
 import lombok.Getter;
-import org.yaml.snakeyaml.DumperOptions;
-import org.yaml.snakeyaml.Yaml;
+import lombok.Setter;
+import org.jetbrains.annotations.Nullable;
+import org.spongepowered.configurate.hocon.HoconConfigurationLoader;
 
 import java.io.File;
 import java.io.InputStream;
-import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.util.LinkedHashMap;
-import java.util.Map;
 
-/*
- * Due to present issues with JitPack, this is a copy-paste of sharkbyte-configuration's snakeyaml module.
+/**
+ * This class represents a configuration file stored on the disk. We can handle the load and save methods for the file
+ * via this class.
  */
-
 public class ConfigurationFile {
 
+    @Getter
     private final String fileName;
+    @Getter
     private final Path directoryPath, filePath;
     private final InputStream input;
-    private final Yaml yaml;
-    private Map<String, Object> root = null;
+    private ConfigSection root = null;
+    private HoconConfigurationLoader loader = null;
+    @Setter
+    private boolean modified;
 
     protected File configFile;
 
+    /**
+     * Create the ConfigurationFile object without an input stream.
+     */
     public ConfigurationFile(String fileName, Path directoryPath) {
-        this.fileName = fileName;
-        this.directoryPath = directoryPath;
-        this.input = null;
-        this.filePath = directoryPath.resolve(fileName);
-        DumperOptions options = new DumperOptions();
-        options.setIndent(2);
-        options.setPrettyFlow(true);
-        options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
-        options.setIndicatorIndent(2);
-        options.setIndentWithIndicator(true);
-        yaml = new Yaml(options);
+        this(fileName, directoryPath, null);
     }
 
+    /**
+     * Create the ConfigurationFile object with an input stream. By default, this will
+
+     */
     public ConfigurationFile(String fileName, Path directoryPath, InputStream input) {
         this.fileName = fileName;
         this.directoryPath = directoryPath;
         this.input = input;
         this.filePath = directoryPath.resolve(fileName);
-        DumperOptions options = new DumperOptions();
-        options.setIndent(2);
-        options.setPrettyFlow(true);
-        options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
-        options.setIndicatorIndent(2);
-        options.setIndentWithIndicator(true);
-        yaml = new Yaml(options);
     }
 
-    public ConfigSection load() {
+    /**
+     * Load the configuration file from the disk.
+     * If this operation completely fails, ConfigSection will be null.
+     */
+    public @Nullable ConfigSection load() {
         try {
             if (!Files.exists(directoryPath)) Files.createDirectories(directoryPath);
             File configFile = filePath.toFile();
@@ -70,27 +66,36 @@ public class ConfigurationFile {
             e.printStackTrace();
         }
 
-        root = null;
-        try (InputStream inputStream = Files.newInputStream(configFile.toPath())) {
-            root = yaml.load(inputStream);
+        loader = HoconConfigurationLoader.builder().path(filePath).build();
+        try {
+            root = new ConfigSection(this, loader.load());
         } catch (Exception e) {
             e.printStackTrace();
+            root = null;
         }
 
-        if (root == null) root = new LinkedHashMap<>();
-        return new ConfigSection(root);
+        return root;
     }
 
+    /**
+     * Save the configuration file to the disk.
+     */
     public void save() {
-        try (PrintWriter writer = new PrintWriter(configFile)) {
-            yaml.dump(root, writer);
+        if (!modified) return;
+        try {
+            loader.save(root.getNode());
         } catch (Exception e) {
             e.printStackTrace();
         }
+        modified = false;
     }
 
-    public ConfigSection getRoot() {
-        if (root == null) load();
-        return new ConfigSection(root);
+    /**
+     * Return the root node of this config file.
+     * If the file load completely fails, ConfigSection will be null.
+     */
+    public @Nullable ConfigSection getRoot() {
+        if (root == null) return load();
+        return root;
     }
 }

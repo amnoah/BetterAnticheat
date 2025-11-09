@@ -170,14 +170,14 @@ public class CMLTracker extends Tracker {
         private final OrderedArrayDoubleEvictingList history;
 
         public MLCheck(final Player player, final ModelConfig modelConfig) {
-            super(BetterAnticheat.getInstance(), "ML Aim: " + modelConfig.getDisplayName(), "", "", false);
+            super(BetterAnticheat.getInstance(), player, "ML Aim: " + modelConfig.getDisplayName(), "", "", false);
 
             this.modelConfig = modelConfig;
             this.player = player;
 
             super.load(this.modelConfig.getConfigSection());
 
-            if (!isEnabled()) {
+            if (!getCheckConfig().isEnabled()) {
                 log.debug("[BetterAnticheat] [ML] {} is currently disabled", getName());
             }
 
@@ -185,7 +185,7 @@ public class CMLTracker extends Tracker {
         }
 
         public void handle(final double[][] data) {
-            if (!isEnabled())
+            if (!getCheckConfig().isEnabled())
                 return;
 
             synchronized (MODEL_LOCK) {

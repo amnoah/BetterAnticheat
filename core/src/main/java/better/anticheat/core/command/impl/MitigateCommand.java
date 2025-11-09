@@ -39,11 +39,6 @@ public class MitigateCommand extends Command {
             return;
         }
 
-        if (!console && !plugin.getDataBridge().hasPermission(player.getUser(), changeOthersPerms)) {
-            sendReply(actor, Component.text("You do not have permission to toggle alerts for other players.").color(TextColor.color(0xFF0000)));
-            return;
-        }
-
         if (targetPlayer == null) {
             sendReply(actor, Component.text("TargetPlayer was not found").color(TextColor.color(0xFF0000)));
             return;
@@ -52,22 +47,5 @@ public class MitigateCommand extends Command {
         targetPlayer.getMitigationTracker().getMitigationTicks().increment(seconds * 20);
         sendReply(actor, Component.text("Player " + targetPlayer.getUser().getName() + " will be mitigated for " + seconds + " seconds").color(TextColor.color(0x00FF00)));
 
-    }
-
-    @Override
-    public boolean load(ConfigSection section) {
-        boolean modified = super.load(section);
-
-        if (!section.hasNode("mitigate-players")) {
-            List<String> defaultOthers = new ArrayList<>();
-            defaultOthers.add("better.anticheat.mitigate");
-            defaultOthers.add("example.permission.node");
-            section.setList(String.class, "change-others-permissions", defaultOthers);
-        }
-        List<String> changeOthersPermsList = section.getList(String.class, "mitigate-players");
-        changeOthersPerms = new String[changeOthersPermsList.size()];
-        for (int i = 0; i < changeOthersPermsList.size(); i++) changeOthersPerms[i] = changeOthersPermsList.get(i);
-
-        return modified;
     }
 }

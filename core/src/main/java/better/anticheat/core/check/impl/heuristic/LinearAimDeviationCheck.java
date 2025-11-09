@@ -3,6 +3,7 @@ package better.anticheat.core.check.impl.heuristic;
 import better.anticheat.core.BetterAnticheat;
 import better.anticheat.core.check.Check;
 import better.anticheat.core.check.CheckInfo;
+import better.anticheat.core.player.Player;
 import better.anticheat.core.util.MathUtil;
 import better.anticheat.core.util.entity.EntityMath;
 import better.anticheat.core.util.math.LinearRegression;
@@ -28,8 +29,8 @@ public class LinearAimDeviationCheck extends Check {
 
     private Boolean tickEndSupported;
 
-    public LinearAimDeviationCheck(BetterAnticheat plugin) {
-        super(plugin);
+    public LinearAimDeviationCheck(BetterAnticheat plugin, Player player) {
+        super(plugin, player);
     }
 
     @Override

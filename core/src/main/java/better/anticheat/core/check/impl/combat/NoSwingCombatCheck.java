@@ -3,6 +3,7 @@ package better.anticheat.core.check.impl.combat;
 import better.anticheat.core.BetterAnticheat;
 import better.anticheat.core.check.Check;
 import better.anticheat.core.check.CheckInfo;
+import better.anticheat.core.player.Player;
 import com.github.retrooper.packetevents.event.simple.PacketPlayReceiveEvent;
 import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientInteractEntity;
 
@@ -14,8 +15,8 @@ public class NoSwingCombatCheck extends Check {
 
     private boolean swung = true;
 
-    public NoSwingCombatCheck(BetterAnticheat plugin) {
-        super(plugin);
+    public NoSwingCombatCheck(BetterAnticheat plugin, Player player) {
+        super(plugin, player);
     }
 
     @Override

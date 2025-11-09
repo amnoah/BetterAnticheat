@@ -4,6 +4,7 @@ import better.anticheat.core.BetterAnticheat;
 import better.anticheat.core.check.Check;
 import better.anticheat.core.check.CheckInfo;
 import better.anticheat.core.check.ClientFeatureRequirement;
+import better.anticheat.core.player.Player;
 import com.github.retrooper.packetevents.event.simple.PacketPlayReceiveEvent;
 import lombok.extern.slf4j.Slf4j;
 
@@ -16,8 +17,8 @@ public class FlyingSequenceCheck extends Check {
 
     private int ticks = -1;
 
-    public FlyingSequenceCheck(BetterAnticheat plugin) {
-        super(plugin);
+    public FlyingSequenceCheck(BetterAnticheat plugin, Player player) {
+        super(plugin, player);
     }
 
     @Override

@@ -3,6 +3,7 @@ package better.anticheat.core.check.impl.combat;
 import better.anticheat.core.BetterAnticheat;
 import better.anticheat.core.check.Check;
 import better.anticheat.core.check.CheckInfo;
+import better.anticheat.core.player.Player;
 import better.anticheat.core.util.entity.BoundingBoxSize;
 import better.anticheat.core.util.EasyLoops;
 import com.github.retrooper.packetevents.event.simple.PacketPlayReceiveEvent;
@@ -38,8 +39,8 @@ public class InvalidInteractionPositionCheck extends Check {
             EntityPose.INHALING
     };
 
-    public InvalidInteractionPositionCheck(BetterAnticheat plugin) {
-        super(plugin);
+    public InvalidInteractionPositionCheck(BetterAnticheat plugin, Player player) {
+        super(plugin, player);
     }
 
     @Override

@@ -3,6 +3,7 @@ package better.anticheat.core.check.impl.combat;
 import better.anticheat.core.BetterAnticheat;
 import better.anticheat.core.check.Check;
 import better.anticheat.core.check.CheckInfo;
+import better.anticheat.core.player.Player;
 import com.github.retrooper.packetevents.event.simple.PacketPlayReceiveEvent;
 import com.github.retrooper.packetevents.protocol.packettype.PacketType;
 import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientInteractEntity;
@@ -13,8 +14,8 @@ import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientIn
 @CheckInfo(name = "SelfHit", category = "combat")
 public class SelfHitCheck extends Check {
 
-    public SelfHitCheck(BetterAnticheat plugin) {
-        super(plugin);
+    public SelfHitCheck(BetterAnticheat plugin, Player player) {
+        super(plugin, player);
     }
 
     @Override

@@ -3,6 +3,7 @@ package better.anticheat.core.check.impl.heuristic;
 import better.anticheat.core.BetterAnticheat;
 import better.anticheat.core.check.Check;
 import better.anticheat.core.check.CheckInfo;
+import better.anticheat.core.player.Player;
 import com.github.retrooper.packetevents.event.simple.PacketPlayReceiveEvent;
 import com.github.retrooper.packetevents.protocol.player.ClientVersion;
 import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientInteractEntity;
@@ -18,8 +19,8 @@ public class AimStabilizationCheck extends Check {
     private double buffer = 0;
     private Boolean supportsTickEnd;
 
-    public AimStabilizationCheck(BetterAnticheat plugin) {
-        super(plugin);
+    public AimStabilizationCheck(BetterAnticheat plugin, Player player) {
+        super(plugin, player);
     }
 
     @Override

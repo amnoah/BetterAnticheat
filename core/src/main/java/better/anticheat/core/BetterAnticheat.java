@@ -2,7 +2,9 @@ package better.anticheat.core;
 
 import better.anticheat.core.check.CheckManager;
 import better.anticheat.core.command.CommandManager;
+import better.anticheat.core.command.CommandPacketListener;
 import better.anticheat.core.configuration.ConfigSection;
+import better.anticheat.core.configuration.ConfigurationManager;
 import better.anticheat.core.punishment.PunishmentManager;
 import better.anticheat.core.configuration.ConfigurationFile;
 import better.anticheat.core.player.PlayerManager;
@@ -22,15 +24,58 @@ import revxrsal.commands.Lamp;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Path;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Getter
 public class BetterAnticheat {
 
     @Getter
+    @Deprecated
+    /*
+     * Going forward, we are going to avoid using static like this. You should not have a static manager if it needs
+     * something like this, which would usually be passed in a constructor. Instead, make it a proper object!
+     * Static access of the BetterAnticheat class will be removed soon. If you are currently using it, don't.
+     */
     private static BetterAnticheat instance;
+
+    private final static List<ModelConfig> DEFAULT_ML_CONFIGS = new ArrayList<>();
+
+    static {
+        DEFAULT_ML_CONFIGS.add(new ModelConfig(
+                "raw-data-included-v0",
+                "Raw Data",
+                "decision_tree_gini",
+                0,
+                List.of("legit-small-2025-06-24-1", "legit-small-2025-07-29-1"),
+                List.of("cheat-small-2025-06-24-1", "cheat-small-2025-07-29-1"),
+                false,
+                false,
+                15,
+                7.5,
+                6,
+                10,
+                35,
+                4,
+                null
+        ));
+        DEFAULT_ML_CONFIGS.add(new ModelConfig(
+                "statistics-included-v0",
+                "Settings",
+                "decision_tree_entropy",
+                2,
+                List.of("legit-small-2025-06-24-1", "legit-small-2025-07-29-1"),
+                List.of("cheat-small-2025-06-24-1", "cheat-small-2025-07-29-1"),
+                true,
+                false,
+                20,
+                6,
+                5,
+                10,
+                30,
+                4,
+                null
+        ));
+    }
 
     // Constructor-related objs
     private final DataBridge dataBridge;
@@ -41,6 +86,7 @@ public class BetterAnticheat {
     // Managers
     private final CheckManager checkManager;
     private final CommandManager commandManager;
+    private final ConfigurationManager configurationManager;
     private final LyricManager lyricManager;
     private final PlayerManager playerManager;
     private final PunishmentManager punishmentManager;
@@ -51,7 +97,7 @@ public class BetterAnticheat {
     private double verboseCooldownDivisor;
     private List<String> alertHover;
     private String alertMessage, alertPermission, clickCommand;
-    private boolean punishmentModulo, testMode, useCommand, ignorePre121Players;
+    private boolean punishmentModulo, testMode, ignorePre121Players;
     private String webhookUrl, webhookMessage, saveWebhookUrl;
     private final Map<String, ModelConfig> modelConfigs = new Object2ObjectArrayMap<>();
     private boolean mitigationCombatDamageEnabled;
@@ -78,6 +124,8 @@ public class BetterAnticheat {
 
         instance = this;
 
+        this.configurationManager = new ConfigurationManager(this);
+
         this.checkManager = new CheckManager(this);
         this.recordingSaver = new RecordingSaver(directory);
         this.commandManager = new CommandManager(this, lamp);
@@ -92,12 +140,14 @@ public class BetterAnticheat {
             dataBridge.logWarning("You are running on an unsupported version of Minecraft!");
             dataBridge.logWarning("Please update to 1.21 or above!");
             enabled = false;
+            return;
         }
     }
 
     public void enable() {
         if (!enabled) return;
         PacketEvents.getAPI().getEventManager().registerListener(new PacketListener(this));
+        PacketEvents.getAPI().getEventManager().registerListeners(new CommandPacketListener(this));
         load();
 
         // Ensure players are 1.21+. We will conditionally load checks depending on features (e.g., CLIENT_TICK_END).
@@ -113,117 +163,233 @@ public class BetterAnticheat {
 
         dataBridge.logInfo("Beginning load!");
 
-        ConfigSection settings = getFile("settings.yml", BetterAnticheat.class.getResourceAsStream("/settings.yml")).load();
-        alertCooldown = settings.getObject(Integer.class, "alert-cooldown", 1000);
-        verboseCooldownDivisor = settings.getObject(Double.class, "verbose-cooldown-divisor", 4.0);
-        alertPermission = settings.getObject(String.class, "alert-permission", "better.anticheat");
-        alertHover = settings.getList(String.class, "alert-hover");
-        alertMessage = settings.getObject(String.class, "alert-message", "");
-        clickCommand = settings.getObject(String.class, "click-command", "");
-        punishmentModulo = settings.getObject(Boolean.class, "punishment-modulo", true);
-        testMode = settings.getObject(Boolean.class, "test-mode", false);
-        useCommand = settings.getObject(Boolean.class, "enable-commands", true);
-        ignorePre121Players = settings.getObject(Boolean.class, "dont-inject-pre-121-players", true);
+        configurationManager.load();
 
-        final var webhookNode = settings.getConfigSection("webhook");
-        if (webhookNode != null) {
-            webhookUrl = webhookNode.getObject(String.class, "url", "");
-            webhookMessage = webhookNode.getObject(String.class, "message", "**%username%** failed **%type%** (VL: %vl%)");
-            saveWebhookUrl = webhookNode.getObject(String.class, "save-url", "");
-        } else {
-            webhookUrl = "";
-            webhookMessage = "**%username%** failed **%type%** (VL: %vl%)";
-            saveWebhookUrl = "";
-        }
+        ConfigSection settings = configurationManager.getConfigurationFile("settings.conf").getRoot();
+        if (settings == null) return;
 
+        // Load general settings.conf settings.
 
-        final var combatMitigationNode = settings.getConfigSection("combat-damage-mitigation");
+        alertCooldown = settings.getOrSetIntegerWithComment(
+                "alert-cooldown",
+                1000,
+                "How long in ms should it be before a given check can send another alert."
+        );
+        verboseCooldownDivisor = settings.getOrSetDoubleWithComment(
+                "verbose-cooldown-divisor",
+                4,
+                """
+                        How much should we divide the alert cooldown by for verbose alerts?
+                        If you keep alert cooldown at 1000ms, then verbose cooldown is the max amount of alerts per player per check per second."""
+        );
+        alertPermission = settings.getOrSetStringWithComment(
+                "alert-permission",
+                "better.anticheat",
+                "Users with this permission will receive alert messages."
+        );
+        alertHover = settings.getOrSetStringListWithComment(
+                "alert-hover",
+                Arrays.asList("&7Client Version: &c%clientversion%&7.", "&7Debug: &c%debug%&7.", "&7Click to teleport to the player!"),
+                """
+                        What should appear when an alert is hovered over?
+                        Set to [] to disable.
+                        Available Placeholders:
+                        %clientversion% - The player's Minecraft version.
+                        %debug% - Any debug the check outputs."""
+        );
+        alertMessage = settings.getOrSetStringWithComment(
+                "alert-message",
+                "&c&lBA > &r&4%username% &7failed &4%type% &7VL: &4%vl%",
+                """
+                        What message should be displayed when a check is failed?
+                        Set to "" to disable.
+                        Available Placeholders:
+                        %type% - The check that was failed.
+                        %vl% - The amount of times this player has failed the check.
+                        %username% - The username of the player who failed the check."""
+        );
+        clickCommand = settings.getOrSetStringWithComment(
+                "click-command",
+                "tp %username%",
+                """
+                        What command should be run when an alert message is clicked on?
+                        Set to "" to disable.
+                        Available Placeholders:
+                        %username% - The username of the player who failed the check."""
+        );
+        punishmentModulo = settings.getOrSetBooleanWithComment(
+                "punishment-modulo",
+                true,
+                """
+                        If true, punishments will be delivered if current VL is divisible by the punishment amount.
+                        Ex: At 8 vls, punishments set for 8, 4, 2, and 1 would run. Punishments set for 3, 5, 6, and 7 wouldn't.
+                        If false, punishments will be delivered at the written vl.
+                        Ex: At 8 vls, punishments set for 8 would run. Punishments set for 1, 2, 3, 4, 5, 6, and 7 wouldn't."""
+        );
+        ignorePre121Players = settings.getOrSetBooleanWithComment(
+                "dont-inject-pre-121-players",
+                true,
+                "Ignore pre-1.21 players to avoid compatibility issues, within the anticheat."
+        );
+        testMode = settings.getOrSetBooleanWithComment(
+                "test-mode",
+                false,
+                "Sends alerts only to the user who triggered it. Used for testing purposes."
+        );
 
-        if (combatMitigationNode == null) {
-            // Default values if configuration section doesn't exist
-            this.mitigationCombatDamageEnabled = true;
-            this.mitigationCombatDamageCancellationChance = 20.0;
-            this.mitigationCombatDamageTakenIncrease = 40.0;
-            this.mitigationCombatDamageDealtDecrease = 40.0;
-            this.mitigationCombatTickEnabled = true;
-            this.mitigationCombatTickDuration = 3;
-            this.mitigationCombatDamageHitregEnabled = false;
-        } else {
-            this.mitigationCombatDamageEnabled = combatMitigationNode
-                    .getObject(Boolean.class, "enabled", false);
-            this.mitigationCombatDamageCancellationChance = combatMitigationNode
-                    .getObject(Double.class, "hit-cancellation-chance", 20.0);
-            this.mitigationCombatDamageTakenIncrease = combatMitigationNode
-                    .getObject(Double.class, "damage-taken-increase", 40.0);
-            this.mitigationCombatDamageDealtDecrease = combatMitigationNode
-                    .getObject(Double.class, "damage-reduction-multiplier", 40.0);
-            this.mitigationCombatKnockbackDealtDecrease = combatMitigationNode
-                    .getObject(Double.class, "velocity-dealt-reduction", 40.0);
-            this.mitigationCombatDamageHitregEnabled = combatMitigationNode
-                    .getObject(Boolean.class, "mess-with-hitreg", false);
+        // Webhook management.
 
-            final var velocityTickCheckNode = combatMitigationNode.getConfigSection("tick-mitigation");
-            if (velocityTickCheckNode != null) {
-                this.mitigationCombatTickEnabled = velocityTickCheckNode.getObject(Boolean.class, "enabled", true);
-                this.mitigationCombatTickDuration = velocityTickCheckNode.getObject(Integer.class, "min-ticks-since-last-attack", 4);
-            } else {
-                this.mitigationCombatTickEnabled = false;
-                this.mitigationCombatTickDuration = 3;
-            }
-        }
+        final var webhookNode = settings.getConfigSectionOrCreate("webhook");
+        webhookUrl = webhookNode.getOrSetStringWithComment(
+                "url",
+                "",
+                "The URL of the webhook to send messages to. Set to \"\" to disable."
+        );
+        webhookMessage = webhookNode.getOrSetStringWithComment(
+                "message",
+                "**%username%** failed **%type%** (VL: %vl%)",
+                "The message to send to the webhook."
+        );
+        saveWebhookUrl = webhookNode.getOrSetStringWithComment(
+                "save-url",
+                "",
+                """
+                        The URL of the webhook to send recording saves to (optional).
+                        If set to "", it will use the main webhook URL instead."""
+        );
+
+        // Handle combat mitigation.
+
+        final var combatMitigationNode = settings.getConfigSectionOrCreate("combat-damage-mitigation");
+        mitigationCombatDamageEnabled = combatMitigationNode.getOrSetBooleanWithComment(
+                "enabled",
+                true,
+                """
+                        Whether to enable ML-based combat damage modification
+                        Only works when ML is enabled."""
+        );
+        mitigationCombatDamageCancellationChance = combatMitigationNode.getOrSetDoubleWithComment(
+                "hit-cancellation-chance",
+                20,
+                "Multiplier for hit cancellation chance (average * multiplier = % chance), average is 1-10, where 10 is definitely cheating, and 1 is not cheating."
+        );
+        mitigationCombatDamageTakenIncrease = combatMitigationNode.getOrSetDoubleWithComment(
+                "damage-taken-increase",
+                40,
+                """
+                        Multiplier for damage increase calculation. Will increase damage taken by increase%.
+                        Not supported on Sponge and Velocity."""
+        );
+        mitigationCombatDamageDealtDecrease = combatMitigationNode.getOrSetDoubleWithComment(
+                "damage-dealt-reduction",
+                40,
+                """
+                        Multiplier for damage reduction calculation. Will reduce damage dealt by reduction%.
+                        Not supported on Sponge and Velocity."""
+        );
+        mitigationCombatKnockbackDealtDecrease = combatMitigationNode.getOrSetDoubleWithComment(
+                "velocity-dealt-reduction",
+                40,
+                """
+                        Multiplier for knockback reduction calculation. Will reduce velocity by reduction%.
+                        Not supported on Sponge and Velocity."""
+        );
+        mitigationCombatDamageHitregEnabled = combatMitigationNode.getOrSetBooleanWithComment(
+                "mess-with-hitreg",
+                false,
+                """
+                        Mess with hitreg to make life horrible for cheaters? Works by giving the person who is attacking the cheater server-side hitbox and reach cheats.
+                        Can break other anticheat's reach and hitbox checks.
+                        Is probably the most OP mitigation."""
+        );
+
+        final var combatTickNode = combatMitigationNode.getConfigSectionOrCreate("tick-mitigation");
+        mitigationCombatTickEnabled = combatTickNode.getOrSetBooleanWithComment(
+                "enabled",
+                true,
+                "Tick-based attack cancellation. Is effectively a cps limit for cheaters."
+        );
+        mitigationCombatTickDuration = combatTickNode.getOrSetIntegerWithComment(
+                "min-ticks-since-last-attack",
+                3,
+                "Minimum number of ticks since the last attack, in order to allow a new attack."
+        );
 
         // Load auto-record settings
-        final var autoRecordNode = settings.getConfigSection("auto-record");
-        if (autoRecordNode != null) {
-            this.autoRecordEnabled = autoRecordNode.getObject(Boolean.class, "enabled", false);
-            this.autoRecordPermission = autoRecordNode.getObject(String.class, "permission", "better.anticheat.ml.record");
-        } else {
-            this.autoRecordEnabled = false;
-            this.autoRecordPermission = "better.anticheat.ml.record";
-        }
+        final var autoRecordNode = settings.getConfigSectionOrCreate("auto-record");
+        autoRecordEnabled = autoRecordNode.getOrSetBooleanWithComment(
+                "enabled",
+                false,
+                "Whether to automatically enable machine learning recording on the first hit if the user has the required permission."
+        );
+        autoRecordPermission = autoRecordNode.getOrSetStringWithComment(
+                "permission",
+                "better.anticheat.ml.record",
+                """
+                        The permission required to automatically enable recording on first hit
+                        Only give this to players who are guaranteed not to cheat (like staff)."""
+        );
 
-        // This is true in the default config but we set it to false here so people updating their server without knowing about the new config do not get fucked.
-        this.entityTrackerFastAwaitingUpdate = settings.getObject(Boolean.class, "entity-tracker.fast-awaiting-update", false);
-        this.entityTrackerFastEntityBox = settings.getObject(Boolean.class, "entity-tracker.fast-entity-box", false);
+        // This is true in the default config but we set it to false here so people updating their server without knowing about the new config do not get messed up.
+        final var entityTracker = settings.getConfigSectionOrCreate("entity-tracker");
+        entityTrackerFastAwaitingUpdate = entityTracker.getOrSetBooleanWithComment(
+                "fast-awaiting-update",
+                true,
+                """
+                        Changes the way the entity tracker handles ticking interpolation when new movements are in flight.
+                        This improves performance but may reduce strictness slightly."""
+        );
+        entityTrackerFastEntityBox = entityTracker.getOrSetBooleanWithComment(
+                "fast-entity-box",
+                false,
+                """
+                        Uses a new single box containing all other entity boxes instead of iterating over existing boxes when ray tracing.
+                        Is usually faster but may reduce strictness slightly."""
+        );
 
         loadML(settings);
         loadCookieAllocator(settings);
 
+        // This load order is important.
         punishmentManager.load();
         checkManager.load();
         this.lamp = commandManager.load();
         playerManager.load();
 
+        configurationManager.save();
+
         dataBridge.logInfo("Load finished!");
     }
 
     public void loadML(final ConfigSection baseConfig) {
-        final var mlNode = baseConfig.getConfigSection("ml");
-        final var mlEnabled = mlNode.getObject(Boolean.class, "enabled", false);
+        modelConfigs.clear();
+        final var mlNode = baseConfig.getConfigSectionOrCreateWithComment(
+                """
+                        NOTE: These features are currently highly experimental, and are released for development purposes only.
+                        DO NOT USE THEM IN PRODUCTION ENVIRONMENTS WITHOUT THOROUGH TESTING
+                        MAKING THIS FEATURE STABLE will likely require significant and diverse amounts of extra training data, which can be collected with the record commands.""",
+                "ml"
+        );
+        final var mlEnabled = mlNode.getOrSetBooleanWithComment("enabled", false, "Whether to enable ML combat features.");
+        if (!mlEnabled) return;
 
-        final var models = mlNode.getConfigSection("models");
+        boolean hasModels = mlNode.hasNode("models");
+        final var models = mlNode.getConfigSectionOrCreateWithComment(
+                "The list of models to use. Note that this does not update when the plugin is updated, so check the wiki for the latest recommended configuration, after upgrades.",
+                "models"
+        );
 
-        if (mlEnabled) {
-            this.modelConfigs.clear();
 
-            for (final var child : models.getChildren()) {
-                this.modelConfigs.put(child.getKey(), new ModelConfig(
-                        child.getObject(String.class, "display-name", "example-model"),
-                        child.getObject(String.class, "type", "model-type"),
-                        child.getObject(Integer.class, "slice", 1),
-                        child.getList(String.class, "legit-dataset-names"),
-                        child.getList(String.class, "cheat-dataset-names"),
-                        child.getObject(Boolean.class, "statistics", false),
-                        child.getObject(Boolean.class, "shrink", true),
-                        child.getObject(Integer.class, "samples", 10),
-                        child.getObject(Double.class, "alert-threshold", 7.5),
-                        child.getObject(Double.class, "mitigation-threshold", 6.0),
-                        child.getObject(Integer.class, "mitigation-only-ticks", 20),
-                        child.getObject(Integer.class, "tree-depth", 35),
-                        child.getObject(Integer.class, "node-size", 4),
-                        child
-                ));
+        if (!hasModels) {
+            for (final var defaultConfig : DEFAULT_ML_CONFIGS) {
+                models.setObject(ModelConfig.class, defaultConfig.getNode(), defaultConfig);
             }
+        }
+
+        for (final var child : models.getChildren()) {
+            Optional<ModelConfig> conf = models.getObject(ModelConfig.class, child.getKey());
+            if (conf.isEmpty()) continue;
+            modelConfigs.put((String) child.getKey(), conf.get());
         }
 
         this.modelConfigs.forEach((name, config) -> {
@@ -245,53 +411,98 @@ public class BetterAnticheat {
      * @param baseConfig The base configuration section.
      */
     public void loadCookieAllocator(final ConfigSection baseConfig) {
-        final var cookieNode = baseConfig.getConfigSection("cookie-allocator");
+        final var cookieNode = baseConfig.getConfigSectionOrCreate("cookie-allocator");
 
-        if (cookieNode == null) {
-            dataBridge.logInfo("No cookie allocator configuration found, using default sequential allocator");
-            this.cookieAllocatorConfig = CookieAllocatorConfig.createDefault();
-            return;
-        }
-
-        final var type = cookieNode.getObject(String.class, "type", "sequential");
-        final var parametersNode = cookieNode.getConfigSection("parameters");
+        final var type = cookieNode.getOrSetStringWithComment(
+                "type",
+                "sequential",
+                """
+                        The type of cookie ID allocator to use.
+                        Options: "sequential", "random", "timestamp", "file", "lyric\""""
+        );
+        final var parametersNode = cookieNode.getConfigSectionOrCreate("parameters");
 
         final Map<String, Object> parameters = new HashMap<>();
-        if (parametersNode != null) {
-            // For file-based allocator
-            if (parametersNode.hasNode("filename")) {
-                parameters.put("filename", parametersNode.getObject(String.class, "filename", "cookie_sequences.txt"));
-            }
 
-            // For sequential allocator
-            if (parametersNode.hasNode("startValue")) {
-                parameters.put("startValue", parametersNode.getObject(Long.class, "startValue", 0L));
-            }
+        // For file-based allocator
+        parameters.put("filename", parametersNode.getOrSetStringWithComment(
+                "filename",
+                "cookie_sequences.txt",
+                """
+                        For "file" allocator:
+                        The name of the file containing cookie sequences. Default: alphabet.txt
+                        Files can be placed in src/main/resources/ (for inclusion in the plugin JAR)
+                        or in {BetterAnticheat.directory}/cookiesequence/ (for external loading)."""
+                )
+        );
+
+        // For sequential allocator
+        parameters.put("startValue", parametersNode.getOrSetObjectWithComment(
+                Long.class,
+                "startValue",
+                0L,
+                """
+                        For "sequential" allocator:
+                        The starting value for the sequential cookie IDs. Default: 0"""
+                )
+        );
 
             // For random allocator
-            if (parametersNode.hasNode("cookieLength")) {
-                parameters.put("cookieLength", parametersNode.getObject(Integer.class, "cookieLength", 8));
-            }
-            if (parametersNode.hasNode("maxRetries")) {
-                parameters.put("maxRetries", parametersNode.getObject(Integer.class, "maxRetries", 100));
-            }
+            parameters.put("cookieLength", parametersNode.getOrSetIntegerWithComment(
+                    "cookieLength",
+                    8,
+                    """
+                            For "random" allocator:
+                            The length of generated cookie IDs in bytes. Default: 8"""
+                    )
+            );
+            parameters.put("maxRetries", parametersNode.getOrSetIntegerWithComment(
+                    "maxRetries",
+                    100,
+                    "Maximum retries for ensuring uniqueness of random cookie IDs. Default: 100"
+                    )
+            );
 
             // For timestamp allocator
-            if (parametersNode.hasNode("randomBytesLength")) {
-                parameters.put("randomBytesLength", parametersNode.getObject(Integer.class, "randomBytesLength", 4));
-            }
+            parameters.put("randomBytesLength", parametersNode.getOrSetIntegerWithComment(
+                    "randomBytesLength",
+                    4,
+                    """
+                            For "timestamp" allocator:
+                            The number of random bytes to append to the timestamp. Default: 4"""
+                    )
+            );
 
             // For lyric allocator
-            if (parametersNode.hasNode("artist")) {
-                parameters.put("artist", parametersNode.getObject(String.class, "artist", ""));
-            }
-            if (parametersNode.hasNode("title")) {
-                parameters.put("title", parametersNode.getObject(String.class, "title", ""));
-            }
-            if (parametersNode.hasNode("maxLines")) {
-                parameters.put("maxLines", parametersNode.getObject(Integer.class, "maxLines", 0));
-            }
-        }
+            parameters.put("artist", parametersNode.getOrSetStringWithComment(
+                    "artist",
+                    "",
+                    """
+                            For "lyric" allocator, here are some songs that work well:
+                            
+                            Recommended #1: Artist: "Lana Del Rey", Song: "God Bless America - And All The Beautiful Women In It"
+                            Recommended #2: Artist: "2 Live Crew", Song: "The Fuck Shop"
+                            Recommended #3: Artist: "Metallica" - Song: "So What"
+                            Recommended #4: Artist: "Mao Ze" - Song: "Red Sun in the Sky"
+                            Recommended #5: Artist: "Rihanna" - Song: "Diamonds"
+                            
+                            The artist of the song for lyric cookies. Default: "\""""
+                    )
+            );
+            parameters.put("title", parametersNode.getOrSetStringWithComment(
+                    "title",
+                    "",
+                    """
+                            The title of the song for lyric cookies. Default: ""
+                            The song must have at least 50 lines of lyrics."""
+                    )
+            );
+            parameters.put("maxLines", parametersNode.getOrSetIntegerWithComment(
+                    "maxLines",
+                    0,
+                    "The maximum number of lyric lines to use (0 for all). Default: 0"
+                    )
+            );
 
         this.cookieAllocatorConfig = new CookieAllocatorConfig(type, parameters);
 
@@ -334,13 +545,4 @@ public class BetterAnticheat {
 
         dataBridge.logInfo("Loaded cookie allocator configuration: type=" + type + ", parameters=" + parameters);
     }
-
-    public ConfigurationFile getFile(String name) {
-        return new ConfigurationFile(name, directory);
-    }
-
-    public ConfigurationFile getFile(String name, InputStream input) {
-        return new ConfigurationFile(name, directory, input);
-    }
-
 }

@@ -45,11 +45,12 @@ public abstract class Command implements OrphanCommand {
 
     // Config options.
     private boolean enabled;
-    private String[] paths, permissions;
+    private String[] names, paths, permissions;
     protected List<String> defaultNames = new ArrayList<>(), defaultPermissions = new ArrayList<>();
 
     //private String[] paths;
     private Orphans orphans;
+    private final List<Command> children = new ArrayList<>();
 
     /**
      * Construct the command via info provided in CommandInfo annotation.
@@ -104,7 +105,13 @@ public abstract class Command implements OrphanCommand {
      */
     public boolean hasPermission(final CommandActor actor) {
         if (actor.name().equalsIgnoreCase("console")) return true;
-        var user = getUserFromActor(actor);
+        return hasPermission(getUserFromActor(actor));
+    }
+
+    /**
+     * Return whether a given User has any of this command's permissions.
+     */
+    public boolean hasPermission(final User user) {
         if (user == null) return false;
         return plugin.getDataBridge().hasPermission(user, permissions);
     }
@@ -131,10 +138,10 @@ public abstract class Command implements OrphanCommand {
     /**
      * Load default settings for the command and process them.
      */
-    public boolean load(ConfigSection section) {
+    public void load(ConfigSection section) {
         if (section == null) {
             enabled = false;
-            return false;
+            return;
         }
 
         // Attempt to lazy load parent command.;
@@ -142,17 +149,11 @@ public abstract class Command implements OrphanCommand {
             for (Command command : plugin.getCommandManager().getAllCommands()) {
                 if (!command.getClass().equals(parentClass)) continue;
                 parent = command;
+                parent.children.add(this);
             }
         }
 
-        boolean modified = false;
-
-        // Fetch enabled status.
-        if (!section.hasNode("enabled")) {
-            section.setObject(Boolean.class, "enabled", true);
-            modified = true;
-        }
-        enabled = section.getObject(Boolean.class, "enabled", true);
+        enabled = section.getOrSetBoolean("enabled", true);
         // Cannot be enabled if parent commands are disabled.
         Command par = parent;
         while (par != null) {
@@ -164,47 +165,33 @@ public abstract class Command implements OrphanCommand {
         }
 
         // No use in wasting more time loading.
-        if (!enabled) return modified;
+        if (!enabled) return;
 
         // Grab lists.
-
-        if (!section.hasNode("names")) {
-            section.setList(String.class, "names", defaultNames);
-            modified = true;
-        }
-        List<String> namesList = section.getList(String.class, "names");
-        paths = new String[namesList.size()];
-        for (int i = 0; i < namesList.size(); i++) paths[i] = namesList.get(i);
-
-        if (!section.hasNode("permissions")) {
-            if (defaultPermissions.isEmpty()) {
-                defaultPermissions.add("better.anticheat." + name.toLowerCase());
-                defaultPermissions.add("example.permission.node");
-            }
-            section.setList(String.class, "permissions", defaultPermissions);
-            modified = true;
-        }
-        List<String> permissionsList = section.getList(String.class, "permissions");
+        List<String> namesList = section.getOrSetStringList("names", defaultNames);
+        names = new String[namesList.size()];
+        for (int i = 0; i < namesList.size(); i++) names[i] = namesList.get(i);
+        List<String> permissionsList = section.getOrSetStringList("permissions", Arrays.asList(
+                "better.anticheat." + name.toLowerCase(),
+                "example.permission.node"
+        ));
         permissions = new String[permissionsList.size()];
         for (int i = 0; i < permissionsList.size(); i++) permissions[i] = permissionsList.get(i);
 
         // Process changes.
 
         if (parent == null) {
-            orphans = Orphans.path(paths);
+            paths = names;
         } else {
-            String[] finalPaths = new String[parent.paths.length * paths.length];
+            paths = new String[parent.paths.length * names.length];
             int i = 0;
             for (String parentPath : parent.paths) {
-                for (String childPath : paths) {
-                    finalPaths[i] = parentPath + " " + childPath;
+                for (String childPath : names) {
+                    paths[i] = parentPath + " " + childPath;
                     i++;
                 }
             }
-            orphans = Orphans.path(finalPaths);
-            paths = finalPaths;
         }
-
-        return modified;
+        orphans = Orphans.path(paths);
     }
 }
