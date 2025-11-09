@@ -4,6 +4,7 @@ import better.anticheat.core.BetterAnticheat;
 import better.anticheat.core.check.Check;
 import better.anticheat.core.check.CheckInfo;
 import better.anticheat.core.check.ClientFeatureRequirement;
+import better.anticheat.core.player.Player;
 import better.anticheat.core.util.EasyLoops;
 import better.anticheat.core.util.MathUtil;
 import com.github.retrooper.packetevents.event.simple.PacketPlayReceiveEvent;
@@ -21,8 +22,8 @@ public class MicroAimMovementCheck extends Check {
     private final OrderedArrayFloatEvictingList yawSamples = new OrderedArrayFloatEvictingList(128);
     private final OrderedArrayFloatEvictingList pitchSamples = new OrderedArrayFloatEvictingList(128);
 
-    public MicroAimMovementCheck(BetterAnticheat plugin) {
-        super(plugin);
+    public MicroAimMovementCheck(BetterAnticheat plugin, Player player) {
+        super(plugin, player);
     }
 
     @Override
