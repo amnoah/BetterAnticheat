@@ -145,7 +145,23 @@ public class LinearAimDeviationCheck extends Check {
                     (slopeABS > 0.27 || slopeABS < 0.05)) {
                 anyFlag = true;
                 aimBurstBuffer++;
-                if (aimBurstBuffer > 2) fail("Aim Burst");
+                if (aimBurstBuffer > 2) fail(
+                        "AimBurst: " +
+                                "avg=" + MathUtil.DF_SIX_PLACES.format(avg) +
+                                ", stddev=" + MathUtil.DF_SIX_PLACES.format(stddev) +
+                                ", avgDiff=" + MathUtil.DF_SIX_PLACES.format(avgDiff) +
+                                ", diffDev=" + MathUtil.DF_SIX_PLACES.format(diffDev) +
+                                ", avgRot=" + MathUtil.DF_SIX_PLACES.format(avgRot) +
+                                ", intercept=" + MathUtil.DF_SIX_PLACES.format(intercept) +
+                                ", slope=" + MathUtil.DF_SIX_PLACES.format(slope) +
+                                ", slopeAbs=" + MathUtil.DF_SIX_PLACES.format(slopeABS) +
+                                ", iSE=" + MathUtil.DF_SIX_PLACES.format(interceptStdErr) +
+                                ", sSE=" + MathUtil.DF_SIX_PLACES.format(slopeStdErr) +
+                                ", deltaYaw=" + MathUtil.DF_SIX_PLACES.format(deltaYaw) +
+                                ", yawOff=" + MathUtil.DF_SIX_PLACES.format(yawOffset) +
+                                ", ticksSinceAtk=" + ticksSinceAttack +
+                                ", buf=" + MathUtil.DF_SIX_PLACES.format(aimBurstBuffer)
+                );
             }
         }
 
@@ -154,7 +170,17 @@ public class LinearAimDeviationCheck extends Check {
         {
             if (stddev < 2.0 && interceptStdErr < 10 && slopeStdErr < 10 && avgRot > 2.2) {
                 anyFlag = true;
-                fail("Bad Randomization");
+                fail(
+                        "BadRandomization: " +
+                                "stddev=" + MathUtil.DF_SIX_PLACES.format(stddev) +
+                                ", iSE=" + MathUtil.DF_SIX_PLACES.format(interceptStdErr) +
+                                ", sSE=" + MathUtil.DF_SIX_PLACES.format(slopeStdErr) +
+                                ", avgRot=" + MathUtil.DF_SIX_PLACES.format(avgRot) +
+                                ", avg=" + MathUtil.DF_SIX_PLACES.format(avg) +
+                                ", deltaYaw=" + MathUtil.DF_SIX_PLACES.format(deltaYaw) +
+                                ", yawOff=" + MathUtil.DF_SIX_PLACES.format(yawOffset) +
+                                ", ticksSinceAtk=" + ticksSinceAttack
+                );
             }
         }
 
@@ -164,7 +190,19 @@ public class LinearAimDeviationCheck extends Check {
             if (avg < 2 && interceptStdErr < 15 && slopeStdErr < 1 && slopeABS > 0.1 && slopeABS < 1 && intercept < 20 && intercept > 0 && slope > -0.1 && avgRot > 8) {
                 anyFlag = true;
                 fastAimBuffer += 1;
-                if (fastAimBuffer >= 5) fail("Fast Aim");
+                if (fastAimBuffer >= 5) fail(
+                        "FastAim: " +
+                                "avg=" + MathUtil.DF_SIX_PLACES.format(avg) +
+                                ", iSE=" + MathUtil.DF_SIX_PLACES.format(interceptStdErr) +
+                                ", sSE=" + MathUtil.DF_SIX_PLACES.format(slopeStdErr) +
+                                ", slope=" + MathUtil.DF_SIX_PLACES.format(slope) +
+                                ", slopeAbs=" + MathUtil.DF_SIX_PLACES.format(slopeABS) +
+                                ", intercept=" + MathUtil.DF_SIX_PLACES.format(intercept) +
+                                ", avgRot=" + MathUtil.DF_SIX_PLACES.format(avgRot) +
+                                ", buf=" + MathUtil.DF_SIX_PLACES.format(fastAimBuffer) +
+                                ", deltaYaw=" + MathUtil.DF_SIX_PLACES.format(deltaYaw) +
+                                ", yawOff=" + MathUtil.DF_SIX_PLACES.format(yawOffset)
+                );
             }
         }
 
@@ -173,8 +211,10 @@ public class LinearAimDeviationCheck extends Check {
         {
             var flags = 0.0;
 
-            if (interceptStdErr < 0.8) flags += 0.5;
-            if (slopeStdErr < 0.3) flags++;
+            if (interceptStdErr < 0.6) flags += 0.5;
+            else if (interceptStdErr < 0.8) flags += 0.25;
+            if (slopeStdErr < 0.24) flags++;
+            else if (slopeStdErr < 0.3) flags += 0.5;
             if (slope < -0.2) flags += 0.5;
             if (slope < -3) flags++;
             if (Math.abs(slope) < 0.1) flags += 0.5;
@@ -186,7 +226,20 @@ public class LinearAimDeviationCheck extends Check {
 
             if (flags >= 3 && !player.getTeleportTracker().isTeleported()) {
                 anyFlag = true;
-                fail("LB");
+                fail(
+                        "LB: " +
+                                "flags=" + MathUtil.DF_SIX_PLACES.format(flags) +
+                                ", slope=" + MathUtil.DF_SIX_PLACES.format(slope) +
+                                ", slopeAbs=" + MathUtil.DF_SIX_PLACES.format(slopeABS) +
+                                ", intercept=" + MathUtil.DF_SIX_PLACES.format(intercept) +
+                                ", iSE=" + MathUtil.DF_SIX_PLACES.format(interceptStdErr) +
+                                ", sSE=" + MathUtil.DF_SIX_PLACES.format(slopeStdErr) +
+                                ", avgRot=" + MathUtil.DF_SIX_PLACES.format(avgRot) +
+                                ", avgDiff=" + MathUtil.DF_SIX_PLACES.format(avgDiff) +
+                                ", stddev=" + MathUtil.DF_SIX_PLACES.format(stddev) +
+                                ", deltaYaw=" + MathUtil.DF_SIX_PLACES.format(deltaYaw) +
+                                ", yawOff=" + MathUtil.DF_SIX_PLACES.format(yawOffset)
+                );
             }
         }
 
@@ -199,7 +252,17 @@ public class LinearAimDeviationCheck extends Check {
             if (avg < 0.5 && stddev < 1.75 && avgDiff > 1.5 && diffDev > 3 && !(avgDiff < 10 && avg < 0.3 && stddev < 0.8 && diffDev < 6)) {// TODO: Sensitivity! && data.getRotationProcessor().getSensitivityY() < 60)) {
                 if (avg < 0.45 && (player.getRotationTracker().isCinematic() || player.getRotationTracker().isCinematic2() || avg < 0.1)) {
                     anyFlag = true;
-                    fail("Low Randomization");
+                    fail(
+                            "LowRandomization: " +
+                                    "avg=" + MathUtil.DF_SIX_PLACES.format(avg) +
+                                    ", stddev=" + MathUtil.DF_SIX_PLACES.format(stddev) +
+                                    ", avgDiff=" + MathUtil.DF_SIX_PLACES.format(avgDiff) +
+                                    ", diffDev=" + MathUtil.DF_SIX_PLACES.format(diffDev) +
+                                    ", cinematic=" + (player.getRotationTracker().isCinematic() || player.getRotationTracker().isCinematic2()) +
+                                    ", ticksSinceAtk=" + ticksSinceAttack +
+                                    ", deltaYaw=" + MathUtil.DF_SIX_PLACES.format(deltaYaw) +
+                                    ", yawOff=" + MathUtil.DF_SIX_PLACES.format(yawOffset)
+                    );
                 }
             }
         }
@@ -214,7 +277,19 @@ public class LinearAimDeviationCheck extends Check {
                 anyFlag = true;
                 smoothFollowBuffer += 1;
                 if (smoothFollowBuffer < 10) break smooth_follow;
-                fail("SmoothFollow");
+                fail(
+                        "SmoothFollow: " +
+                                "iSE=" + MathUtil.DF_SIX_PLACES.format(interceptStdErr) +
+                                ", sSE=" + MathUtil.DF_SIX_PLACES.format(slopeStdErr) +
+                                ", stddev=" + MathUtil.DF_SIX_PLACES.format(stddev) +
+                                ", avg=" + MathUtil.DF_SIX_PLACES.format(avg) +
+                                ", avgDiff=" + MathUtil.DF_SIX_PLACES.format(avgDiff) +
+                                ", avgRot=" + MathUtil.DF_SIX_PLACES.format(avgRot) +
+                                ", buf=" + MathUtil.DF_SIX_PLACES.format(smoothFollowBuffer) +
+                                ", entityTSM=" + entity.getTicksSinceMove().get() +
+                                ", deltaYaw=" + MathUtil.DF_SIX_PLACES.format(deltaYaw) +
+                                ", yawOff=" + MathUtil.DF_SIX_PLACES.format(yawOffset)
+                );
             } else smoothFollowBuffer -= 0.4;
         }
 

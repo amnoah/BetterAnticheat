@@ -222,7 +222,7 @@ public class PunishmentManager {
         return punishmentGroups.get(groupName);
     }
 
-    public void runPunishments(Check check) {
+    public void runPunishments(Check check, Object debug) {
         int checkVl = check.getVl();
         for (final var group : check.getCheckConfig().getPunishmentGroups()) {
             int groupVl = 0;
@@ -239,31 +239,31 @@ public class PunishmentManager {
                 for (int punishVl : group.getPerGroupPunishments().keySet()) {
                     if (punishVl == 0) continue;
                     if (groupVl % punishVl == 0) {
-                        runPunishment(check, punishVl, group.getPerGroupPunishments());
+                        runPunishment(check, punishVl, group.getPerGroupPunishments(), debug);
                     }
                 }
                 // Handle check punishments
                 for (int punishVl : group.getPerCheckPunishments().keySet()) {
                     if (punishVl == 0) continue;
                     if (checkVl % punishVl == 0) {
-                        runPunishment(check, punishVl, group.getPerCheckPunishments());
+                        runPunishment(check, punishVl, group.getPerCheckPunishments(), debug);
                     }
                 }
             } else {
                 // Handle group punishments
                 if (group.getPerGroupPunishments().containsKey(groupVl)) {
-                    runPunishment(check, groupVl, group.getPerGroupPunishments());
+                    runPunishment(check, groupVl, group.getPerGroupPunishments(), debug);
                 }
                 // Handle check punishments
                 if (group.getPerCheckPunishments().containsKey(checkVl)) {
-                    runPunishment(check, checkVl, group.getPerCheckPunishments());
+                    runPunishment(check, checkVl, group.getPerCheckPunishments(), debug);
                 }
             }
         }
     }
 
 
-    private void runPunishment(Check check, int vl, Map<Integer, List<String>> punishmentMap) {
+    private void runPunishment(Check check, int vl, Map<Integer, List<String>> punishmentMap, Object debug) {
         List<String> punishment = punishmentMap.get(vl);
         if (punishment != null) {
             for (String command : punishment) {
@@ -278,7 +278,7 @@ public class PunishmentManager {
                         }
                     }
                 } else if (command.startsWith("[webhook]")) {
-                    sendWebhook(check, vl);
+                    sendWebhook(check, vl, debug);
                 } else {
                     command = command.replaceAll("%username%", check.getPlayer().getUser().getName());
                     command = command.replaceAll("%type%", check.getName());
@@ -289,7 +289,7 @@ public class PunishmentManager {
         }
     }
 
-    private void sendWebhook(Check check, int vl) {
+    private void sendWebhook(Check check, int vl, Object debug) {
         String webhookUrl = plugin.getWebhookUrl();
         if (webhookUrl == null || webhookUrl.isEmpty()) {
             return;
@@ -299,6 +299,7 @@ public class PunishmentManager {
         message = message.replaceAll("%username%", check.getPlayer().getUser().getName());
         message = message.replaceAll("%type%", check.getName());
         message = message.replaceAll("%vl%", Integer.toString(vl));
+        message = message.replaceAll("%debug%", debug == null ? "NO DEBUG" : debug.toString());
 
         try {
             Map<String, String> data = new HashMap<>();

@@ -4,6 +4,7 @@ import lombok.experimental.UtilityClass;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.text.DecimalFormat;
 import java.util.Arrays;
 
 /**
@@ -11,7 +12,9 @@ import java.util.Arrays;
  */
 @UtilityClass
 public class MathUtil {
-
+    public static final DecimalFormat DF_FOUR_PLACES = new DecimalFormat("#.####");
+    public static final DecimalFormat DF_SIX_PLACES = new DecimalFormat("#.######");
+    public static final DecimalFormat DF_EIGHT_PLACES = new DecimalFormat("#.########");
     public final double EXPANDER = Math.pow(2, 24);
 
     /**
@@ -192,7 +195,18 @@ public class MathUtil {
 
     public double highest(double[] numbers) {
         double lowest = 0.0D;
-        int i = 0;
+
+        for (double number : numbers) {
+            if (number > lowest) {
+                lowest = number;
+            }
+        }
+
+        return lowest;
+    }
+
+    public double highest(Iterable<Double> numbers) {
+        double lowest = 0.0D;
 
         for (double number : numbers) {
             if (number > lowest) {

@@ -4,6 +4,7 @@ import better.anticheat.core.BetterAnticheat;
 import com.github.retrooper.packetevents.PacketEvents;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 
@@ -24,7 +25,7 @@ public class CombatDamageListener implements Listener {
      *
      * @param event the damage event
      */
-    @EventHandler
+    @EventHandler(priority = EventPriority.HIGHEST)
     public void mitigateReduceDamage(EntityDamageByEntityEvent event) {
         if (!(event.getDamager() instanceof Player bukkitPlayer)) return;
 
@@ -65,7 +66,7 @@ public class CombatDamageListener implements Listener {
      *
      * @param event the damage event
      */
-    @EventHandler
+    @EventHandler(priority = EventPriority.HIGHEST)
     public void mitigateIncreaseDamage(EntityDamageByEntityEvent event) {
         if (!(event.getEntity() instanceof Player bukkitPlayer)) return;
 

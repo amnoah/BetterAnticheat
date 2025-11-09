@@ -111,6 +111,13 @@ public class EntityTracker extends Tracker {
                         wrapper.getPosition().getZ());
                 break;
             }
+            case ENTITY_POSITION_SYNC: {
+                final var wrapper = new WrapperPlayServerEntityPositionSync(event);
+                final var posData = wrapper.getValues();
+                this.teleport(wrapper.getId(), posData.getPosition().getX(), posData.getPosition().getY(),
+                        posData.getPosition().getZ());
+                break;
+            }
             case ENTITY_METADATA: {
                 final var wrapper = new WrapperPlayServerEntityMetadata(event);
                 this.handleMetadata(wrapper);
@@ -245,7 +252,7 @@ public class EntityTracker extends Tracker {
     public void relMove(final int entityId, final double deltaX, final double deltaY, final double deltaZ) {
         var confirmation = confirmationTracker.confirm();
         if (!this.entities.containsKey(entityId)) {
-            confirmation.onAfterConfirm(() -> relMove(entityId, deltaX, deltaY, deltaZ));
+            // confirmation.onAfterConfirm(() -> relMove(entityId, deltaX, deltaY, deltaZ)); // TODO: Re-enable this later
             return;
         }
 

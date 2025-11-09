@@ -224,8 +224,12 @@ public abstract class Check {
          * We have two punishment systems: modulo and strict.
          * Modulo assumes the punishment should be run whenever the vl is divisible by the setting amount.
          * Strict assumes the punishment should be run whenever the vl is the setting amount.
+         *
+         * Only run the punishment if the VL is not marked as verbose (debug) only.
          */
-        plugin.getPunishmentManager().runPunishments(this);
+        if (!verboseOnly) {
+            plugin.getPunishmentManager().runPunishments(this, debug);
+        }
     }
 
     /**
