@@ -13,7 +13,8 @@ import com.github.retrooper.packetevents.event.simple.PacketPlayReceiveEvent;
 @CheckInfo(name = "SlotInteractOrder", category = "combat", requirements = ClientFeatureRequirement.CLIENT_TICK_END)
 public class SlotInteractOrderCheck extends Check {
 
-    private boolean slotChange = false;
+    private boolean attacked = false;
+    //private boolean slotChange = false;
 
     public SlotInteractOrderCheck(BetterAnticheat plugin, Player player) {
         super(plugin, player);
@@ -24,19 +25,15 @@ public class SlotInteractOrderCheck extends Check {
 
         /*
          * Minecraft's networking will send packets in a certain order within the tick. One notable order that some
-         * cheats often break is that attack packets must be sent before slot change packets.
+         * cheats often break is that slot change packets must be sent before attack packets.
          */
 
         switch (event.getPacketType()) {
-            case CLIENT_TICK_END:
-                slotChange = false;
-                break;
-            case HELD_ITEM_CHANGE:
-                slotChange = true;
-                break;
-            case INTERACT_ENTITY:
-                if (slotChange) fail();
-                break;
+            case CLIENT_TICK_END -> attacked = false;
+            case INTERACT_ENTITY -> attacked = true;
+            case HELD_ITEM_CHANGE -> {
+                if (attacked) fail();
+            }
         }
     }
 }
