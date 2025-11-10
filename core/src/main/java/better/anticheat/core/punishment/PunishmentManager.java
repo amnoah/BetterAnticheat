@@ -3,8 +3,11 @@ package better.anticheat.core.punishment;
 import better.anticheat.core.BetterAnticheat;
 import better.anticheat.core.check.Check;
 import better.anticheat.core.configuration.ConfigSection;
+import better.anticheat.core.util.ChatUtil;
 import com.alibaba.fastjson2.JSON;
+import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerDisconnect;
 import lombok.RequiredArgsConstructor;
+import net.kyori.adventure.text.Component;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -279,6 +282,16 @@ public class PunishmentManager {
                     }
                 } else if (command.startsWith("[webhook]")) {
                     sendWebhook(check, vl, debug);
+                } else if (command.startsWith("[kick")) {
+                    /*
+                     * Handle kicking via packets. Strip punishment of unnecessary content.
+                     * [kick Closed Connection] -> Closed Connection
+                     * Used because issuing a kick command will wait until the next kick, this will work immediately.
+                     */
+                    command = command.substring(6, command.length() - 1);
+                    WrapperPlayServerDisconnect wrapper = new WrapperPlayServerDisconnect(Component.text(ChatUtil.translateColors(command)));
+                    check.getPlayer().getUser().sendPacket(wrapper);
+                    check.getPlayer().getUser().closeConnection();
                 } else {
                     command = command.replaceAll("%username%", check.getPlayer().getUser().getName());
                     command = command.replaceAll("%type%", check.getName());
